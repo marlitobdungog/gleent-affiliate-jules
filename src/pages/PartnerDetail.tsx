@@ -1,30 +1,18 @@
-import * as React from "react"
 import {
   ArrowLeft,
   Copy,
   ExternalLink,
-  FileText,
-  RefreshCw,
+  Loader2,
 } from "lucide-react"
+import * as React from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Separator } from "@/components/ui/separator"
-import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Textarea } from "@/components/ui/textarea"
 import { StatusBadge } from "@/components/shared/StatusBadge"
-import {
-  getActivityLogsByPartnerId,
-  getCommissionsByPartnerId,
-  getDealsByPartnerId,
-  getDocumentsByPartnerId,
-  getPartnerById,
-  getPayoutsByPartnerId,
-  getReferralsByPartnerId,
-} from "@/data/mockAffiliateData"
-import { formatCurrency, formatPercent } from "@/lib/format"
+import { partnersApi } from "@/services/api"
+import { formatCurrency } from "@/lib/format"
 import {
   commissionStatusConfig,
   dealStatusConfig,
@@ -32,7 +20,6 @@ import {
   payoutStatusConfig,
   referralStatusConfig,
 } from "@/lib/statusConfig"
-import type { Partner } from "@/types/affiliate"
 
 interface PartnerDetailProps {
   partnerId: string
@@ -40,11 +27,37 @@ interface PartnerDetailProps {
 }
 
 export function PartnerDetail({ partnerId, onBack }: PartnerDetailProps) {
-  const partner = getPartnerById(partnerId)
+  const [partner, setPartner] = React.useState<any>(null)
+  const [loading, setLoading] = React.useState(true)
+
+  React.useEffect(() => {
+    fetchPartner()
+  }, [partnerId])
+
+  const fetchPartner = async () => {
+    setLoading(true)
+    try {
+      const data = await partnersApi.getById(partnerId)
+      setPartner(data)
+    } catch (err) {
+      console.error("Failed to fetch partner", err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="p-6 flex flex-col items-center justify-center min-h-[400px]">
+        <Loader2 className="size-8 animate-spin text-primary" />
+        <p className="text-muted-foreground mt-4">Loading partner details...</p>
+      </div>
+    )
+  }
 
   if (!partner) {
     return (
-      <div className="p-6">
+      <div className="p-6 text-center">
         <p className="text-muted-foreground">Partner not found.</p>
         <Button variant="ghost" size="sm" className="mt-4" onClick={onBack}>
           <ArrowLeft className="size-4 mr-1.5" />
@@ -53,13 +66,6 @@ export function PartnerDetail({ partnerId, onBack }: PartnerDetailProps) {
       </div>
     )
   }
-
-  const referrals = getReferralsByPartnerId(partnerId)
-  const deals = getDealsByPartnerId(partnerId)
-  const commissions = getCommissionsByPartnerId(partnerId)
-  const payouts = getPayoutsByPartnerId(partnerId)
-  const documents = getDocumentsByPartnerId(partnerId)
-  const activityLogs = getActivityLogsByPartnerId(partnerId)
 
   return (
     <div className="p-6 space-y-6 max-w-screen-2xl">
@@ -75,7 +81,7 @@ export function PartnerDetail({ partnerId, onBack }: PartnerDetailProps) {
             <StatusBadge status={partner.status} config={partnerStatusConfig} />
           </div>
           <p className="text-sm text-muted-foreground mt-1">
-            {partner.company} · {partner.partnerType} · Joined {partner.joinedDate}
+            {partner.company_name} · Joined {new Date(partner.joined_at).toLocaleDateString()}
           </p>
         </div>
       </div>
@@ -88,9 +94,6 @@ export function PartnerDetail({ partnerId, onBack }: PartnerDetailProps) {
           <TabsTrigger value="commissions">Commissions</TabsTrigger>
           <TabsTrigger value="payouts">Payouts</TabsTrigger>
           <TabsTrigger value="links">Links & Codes</TabsTrigger>
-          <TabsTrigger value="documents">Documents</TabsTrigger>
-          <TabsTrigger value="activity">Activity Log</TabsTrigger>
-          <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="mt-6">
@@ -99,156 +102,93 @@ export function PartnerDetail({ partnerId, onBack }: PartnerDetailProps) {
         <TabsContent value="referrals" className="mt-6">
           <DataTable
             emptyMessage="No referrals yet."
-            columns={[
-              "Lead Name",
-              "Company",
-              "Product",
-              "Source",
-              "Status",
-              "Assigned Salesperson",
-              "Created Date",
-              "Last Activity",
-            ]}
-            rows={referrals.map((r) => [
-              r.leadName,
-              r.company,
-              r.product,
-              r.source,
+            columns={["Lead Name", "Email", "Product", "Status", "Created Date"]}
+            rows={(partner.referrals || []).map((r: any) => [
+              r.lead_name,
+              r.lead_email,
+              r.product?.name,
               <StatusBadge key={`s-${r.id}`} status={r.status} config={referralStatusConfig} />,
-              r.assignedSalesperson ?? "—",
-              r.createdDate,
-              r.lastActivity,
+              new Date(r.created_at).toLocaleDateString(),
             ])}
           />
         </TabsContent>
         <TabsContent value="deals" className="mt-6">
           <DataTable
             emptyMessage="No deals yet."
-            columns={[
-              "Deal Name",
-              "Client",
-              "Product",
-              "Deal Value",
-              "Deal Status",
-              "Closed Date",
-              "Commission Amount",
-              "Commission Status",
-            ]}
-            rows={deals.map((d) => [
-              d.dealName,
-              d.client,
-              d.product,
-              formatCurrency(d.dealValue),
-              <StatusBadge key={`ds-${d.id}`} status={d.dealStatus} config={dealStatusConfig} />,
-              d.closedDate ?? "—",
-              d.commissionAmount != null ? formatCurrency(d.commissionAmount) : "—",
-              <StatusBadge
-                key={`cs-${d.id}`}
-                status={d.commissionStatus}
-                config={commissionStatusConfig}
-              />,
+            columns={["Deal Name", "Client", "Value", "Status", "Closed Date"]}
+            rows={(partner.deals || []).map((d: any) => [
+              d.deal_name,
+              d.client_name,
+              formatCurrency(d.deal_value),
+              <StatusBadge key={`ds-${d.id}`} status={d.status} config={dealStatusConfig} />,
+              d.closed_at ? new Date(d.closed_at).toLocaleDateString() : "—",
             ])}
           />
         </TabsContent>
         <TabsContent value="commissions" className="mt-6">
           <DataTable
             emptyMessage="No commissions yet."
-            columns={[
-              "Deal",
-              "Product",
-              "Deal Value",
-              "Commission Rate",
-              "Commission Amount",
-              "Status",
-              "Approved By",
-              "Approved Date",
-            ]}
-            rows={commissions.map((c) => [
-              c.deal,
-              c.product,
-              formatCurrency(c.baseAmount),
-              formatPercent(c.commissionRate),
-              formatCurrency(c.commissionAmount),
+            columns={["Deal", "Base Amount", "Rate", "Commission", "Status"]}
+            rows={(partner.commissions || []).map((c: any) => [
+              c.deal?.deal_name,
+              formatCurrency(c.base_amount),
+              c.commission_type === 'percentage' ? `${c.commission_rate}%` : formatCurrency(c.commission_rate),
+              formatCurrency(c.commission_amount),
               <StatusBadge key={`s-${c.id}`} status={c.status} config={commissionStatusConfig} />,
-              c.approvedBy ?? "—",
-              c.approvedDate ?? "—",
             ])}
           />
         </TabsContent>
         <TabsContent value="payouts" className="mt-6">
           <DataTable
             emptyMessage="No payouts yet."
-            columns={[
-              "Payout Period",
-              "Amount",
-              "Method",
-              "Reference No.",
-              "Status",
-              "Created Date",
-              "Paid Date",
-            ]}
-            rows={payouts.map((p) => [
-              p.payoutPeriod,
+            columns={["Amount", "Method", "Reference", "Status", "Paid Date"]}
+            rows={(partner.payouts || []).map((p: any) => [
               formatCurrency(p.amount),
-              p.method,
-              <code key={`ref-${p.id}`} className="text-xs font-mono">
-                {p.referenceNo}
-              </code>,
+              p.payment_method || "—",
+              p.payment_reference || "—",
               <StatusBadge key={`s-${p.id}`} status={p.status} config={payoutStatusConfig} />,
-              p.createdDate,
-              p.paidDate ?? "—",
+              p.paid_at ? new Date(p.paid_at).toLocaleDateString() : "—",
             ])}
           />
         </TabsContent>
         <TabsContent value="links" className="mt-6">
           <LinksTab partner={partner} />
         </TabsContent>
-        <TabsContent value="documents" className="mt-6">
-          <DocumentsTab documents={documents} />
-        </TabsContent>
-        <TabsContent value="activity" className="mt-6">
-          <ActivityLogTab logs={activityLogs} />
-        </TabsContent>
-        <TabsContent value="settings" className="mt-6">
-          <SettingsTab partner={partner} />
-        </TabsContent>
       </Tabs>
     </div>
   )
 }
 
-function OverviewTab({ partner }: { partner: Partner }) {
-  const fields: { label: string; value: React.ReactNode }[] = [
+function OverviewTab({ partner }: { partner: any }) {
+  const fields = [
     { label: "Partner Name", value: partner.name },
     { label: "Email", value: partner.email },
-    { label: "Phone", value: partner.phone },
-    { label: "Company", value: partner.company },
-    { label: "Partner Type", value: partner.partnerType },
+    { label: "Phone", value: partner.phone ?? "—" },
+    { label: "Company", value: partner.company_name ?? "—" },
     { label: "Status", value: <StatusBadge status={partner.status} config={partnerStatusConfig} /> },
-    { label: "Assigned Products", value: partner.assignedProducts.join(", ") },
-    { label: "Commission Plan", value: partner.commissionPlan },
+    { label: "Commission Type", value: partner.commission_type },
+    { label: "Commission Rate", value: partner.commission_type === 'percentage' ? `${partner.commission_rate}%` : formatCurrency(partner.commission_rate) },
     {
       label: "Partner Code",
       value: (
-        <code className="text-xs bg-muted px-1.5 py-0.5 rounded font-mono">{partner.partnerCode}</code>
+        <code className="text-xs bg-muted px-1.5 py-0.5 rounded font-mono">{partner.partner_code}</code>
       ),
     },
     {
       label: "Partner Link",
       value: (
         <a
-          href={partner.partnerLink}
+          href={partner.partner_link}
           className="text-primary hover:underline text-sm"
           target="_blank"
           rel="noreferrer"
         >
-          {partner.partnerLink}
+          {partner.partner_link}
         </a>
       ),
     },
-    { label: "Joined Date", value: partner.joinedDate },
-    { label: "Approved By", value: partner.approvedBy ?? "—" },
-    { label: "Approved Date", value: partner.approvedDate ?? "—" },
+    { label: "Joined Date", value: new Date(partner.joined_at).toLocaleDateString() },
+    { label: "Approved Date", value: partner.approved_at ? new Date(partner.approved_at).toLocaleDateString() : "—" },
   ]
 
   return (
@@ -270,7 +210,12 @@ function OverviewTab({ partner }: { partner: Partner }) {
   )
 }
 
-function LinksTab({ partner }: { partner: Partner }) {
+function LinksTab({ partner }: { partner: any }) {
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    alert("Copied to clipboard!");
+  }
+
   return (
     <div className="space-y-4">
       <Card className="border border-border shadow-none">
@@ -281,8 +226,8 @@ function LinksTab({ partner }: { partner: Partner }) {
           <div className="space-y-2">
             <Label>Partner Code</Label>
             <div className="flex gap-2">
-              <Input readOnly value={partner.partnerCode} className="font-mono text-sm" />
-              <Button variant="outline" size="icon">
+              <Input readOnly value={partner.partner_code} className="font-mono text-sm" />
+              <Button variant="outline" size="icon" onClick={() => copyToClipboard(partner.partner_code)}>
                 <Copy className="size-4" />
               </Button>
             </div>
@@ -290,169 +235,16 @@ function LinksTab({ partner }: { partner: Partner }) {
           <div className="space-y-2">
             <Label>Partner Link</Label>
             <div className="flex gap-2">
-              <Input readOnly value={partner.partnerLink} className="text-sm" />
-              <Button variant="outline" size="icon">
+              <Input readOnly value={partner.partner_link} className="text-sm" />
+              <Button variant="outline" size="icon" onClick={() => copyToClipboard(partner.partner_link)}>
                 <Copy className="size-4" />
               </Button>
               <Button variant="outline" size="icon" asChild>
-                <a href={partner.partnerLink} target="_blank" rel="noreferrer">
+                <a href={partner.partner_link} target="_blank" rel="noreferrer">
                   <ExternalLink className="size-4" />
                 </a>
               </Button>
             </div>
-          </div>
-          <Separator />
-          <Button variant="outline" size="sm">
-            <RefreshCw className="size-4 mr-1.5" />
-            Regenerate Link
-          </Button>
-        </CardContent>
-      </Card>
-
-      <Card className="border border-border shadow-none">
-        <CardHeader>
-          <CardTitle className="text-base font-semibold">UTM Parameters</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
-            <div>
-              <span className="text-xs text-muted-foreground">utm_source</span>
-              <p className="font-mono mt-0.5">partner</p>
-            </div>
-            <div>
-              <span className="text-xs text-muted-foreground">utm_medium</span>
-              <p className="font-mono mt-0.5">referral</p>
-            </div>
-            <div>
-              <span className="text-xs text-muted-foreground">utm_campaign</span>
-              <p className="font-mono mt-0.5">{partner.partnerCode.toLowerCase()}</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  )
-}
-
-function DocumentsTab({
-  documents,
-}: {
-  documents: ReturnType<typeof getDocumentsByPartnerId>
-}) {
-  if (documents.length === 0) {
-    return (
-      <Card className="border border-border shadow-none">
-        <CardContent className="py-12 text-center text-sm text-muted-foreground">
-          No documents uploaded.
-        </CardContent>
-      </Card>
-    )
-  }
-
-  return (
-    <Card className="border border-border shadow-none">
-      <CardContent className="p-0">
-        <div className="divide-y divide-border">
-          {documents.map((doc) => (
-            <div
-              key={doc.id}
-              className="flex items-center gap-4 px-6 py-4 hover:bg-muted/40 transition-colors"
-            >
-              <FileText className="size-5 text-muted-foreground shrink-0" />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground">{doc.name}</p>
-                <p className="text-xs text-muted-foreground">
-                  {doc.type} · {doc.size} · Uploaded {doc.uploadedDate}
-                </p>
-              </div>
-              <Button variant="ghost" size="sm">
-                Download
-              </Button>
-            </div>
-          ))}
-        </div>
-      </CardContent>
-    </Card>
-  )
-}
-
-function ActivityLogTab({
-  logs,
-}: {
-  logs: ReturnType<typeof getActivityLogsByPartnerId>
-}) {
-  if (logs.length === 0) {
-    return (
-      <Card className="border border-border shadow-none">
-        <CardContent className="py-12 text-center text-sm text-muted-foreground">
-          No activity recorded.
-        </CardContent>
-      </Card>
-    )
-  }
-
-  return (
-    <Card className="border border-border shadow-none">
-      <CardContent className="p-0">
-        <div className="divide-y divide-border">
-          {logs.map((log) => (
-            <div key={log.id} className="px-6 py-4">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-sm font-medium text-foreground">{log.action}</p>
-                  {log.details && (
-                    <p className="text-sm text-muted-foreground mt-1">{log.details}</p>
-                  )}
-                  <p className="text-xs text-muted-foreground mt-1.5">
-                    by {log.performedBy} · {log.timestamp}
-                  </p>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </CardContent>
-    </Card>
-  )
-}
-
-function SettingsTab({ partner }: { partner: Partner }) {
-  return (
-    <div className="space-y-4 max-w-lg">
-      <Card className="border border-border shadow-none">
-        <CardHeader>
-          <CardTitle className="text-base font-semibold">Partner Settings</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-5">
-          <div className="space-y-2">
-            <Label htmlFor="commission-plan">Commission Plan</Label>
-            <Input id="commission-plan" defaultValue={partner.commissionPlan} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="partner-notes">Internal Notes</Label>
-            <Textarea
-              id="partner-notes"
-              placeholder="Add internal notes about this partner..."
-              rows={3}
-            />
-          </div>
-          <div className="flex items-center justify-between">
-            <div>
-              <Label>Account Access</Label>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Allow partner to log in to the partner portal
-              </p>
-            </div>
-            <Switch defaultChecked={partner.status === "Active"} />
-          </div>
-          <Separator />
-          <div className="flex gap-2">
-            <Button size="sm">Save Changes</Button>
-            {partner.status !== "Suspended" && (
-              <Button variant="destructive" size="sm">
-                Suspend Partner
-              </Button>
-            )}
           </div>
         </CardContent>
       </Card>

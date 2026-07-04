@@ -52,10 +52,10 @@ export function PerformanceSidebar({ activePage, onNavigate }: PerformanceSideba
           </div>
           <div className="flex flex-col min-w-0">
             <span className="text-sm font-semibold text-sidebar-foreground leading-tight truncate">
-              SprintHR
+              Gleent
             </span>
             <span className="text-xs text-sidebar-foreground/60 leading-tight truncate">
-              Performance
+              Affiliate
             </span>
           </div>
         </div>
