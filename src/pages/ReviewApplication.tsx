@@ -1,12 +1,12 @@
 import * as React from "react"
-import { ArrowLeft, Check, ExternalLink, X } from "lucide-react"
+import { ArrowLeft, Check, ExternalLink, X, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { Textarea } from "@/components/ui/textarea"
 import { StatusBadge } from "@/components/shared/StatusBadge"
-import { getApplicationById } from "@/data/mockAffiliateData"
+import { applicationsApi } from "@/services/api"
 import { applicationStatusConfig } from "@/lib/statusConfig"
 
 interface ReviewApplicationProps {
@@ -14,28 +14,47 @@ interface ReviewApplicationProps {
   onBack: () => void
 }
 
-function generatePartnerCode(company: string): string {
-  const prefix = company
-    .split(/\s+/)
-    .map((w) => w[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 4)
-  const suffix = Math.random().toString(36).slice(2, 6).toUpperCase()
-  return `${prefix}-${suffix}`
-}
-
 export function ReviewApplication({ applicationId, onBack }: ReviewApplicationProps) {
-  const application = getApplicationById(applicationId)
-  const [decisionNotes, setDecisionNotes] = React.useState(application?.notes ?? "")
+  const [application, setApplication] = React.useState<any>(null)
+  const [loading, setLoading] = React.useState(true)
+  const [decisionNotes, setDecisionNotes] = React.useState("")
+  const [isProcessing, setIsProcessing] = React.useState(false)
   const [approvedDetails, setApprovedDetails] = React.useState<{
     partnerCode: string
     partnerLink: string
+    commissionRate: string
+    commissionType: string
   } | null>(null)
+
+  React.useEffect(() => {
+    fetchApplication()
+  }, [applicationId])
+
+  const fetchApplication = async () => {
+    setLoading(true)
+    try {
+      const data = await applicationsApi.getById(applicationId)
+      setApplication(data)
+      setDecisionNotes(data.review_notes ?? "")
+    } catch (err) {
+      console.error("Failed to fetch application", err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="p-6 flex flex-col items-center justify-center min-h-[400px]">
+        <Loader2 className="size-8 animate-spin text-primary" />
+        <p className="text-muted-foreground mt-4">Loading application...</p>
+      </div>
+    )
+  }
 
   if (!application) {
     return (
-      <div className="p-6">
+      <div className="p-6 text-center">
         <p className="text-muted-foreground">Application not found.</p>
         <Button variant="ghost" size="sm" className="mt-4" onClick={onBack}>
           <ArrowLeft className="size-4 mr-1.5" />
@@ -45,12 +64,47 @@ export function ReviewApplication({ applicationId, onBack }: ReviewApplicationPr
     )
   }
 
-  const handleApprove = () => {
-    const code = generatePartnerCode(application.company)
-    setApprovedDetails({
-      partnerCode: code,
-      partnerLink: `https://sprinthr.com/ref/${code}`,
-    })
+  const handleApprove = async () => {
+    setIsProcessing(true)
+    try {
+      const partner = await applicationsApi.approve(applicationId)
+      setApprovedDetails({
+        partnerCode: partner.partner_code,
+        partnerLink: partner.partner_link,
+        commissionRate: partner.commission_rate,
+        commissionType: partner.commission_type
+      })
+      await fetchApplication()
+    } catch (err: any) {
+      alert(err.message || "Failed to approve application")
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
+  const handleReject = async () => {
+    setIsProcessing(true)
+    try {
+      await applicationsApi.reject(applicationId, decisionNotes)
+      await fetchApplication()
+      onBack()
+    } catch (err: any) {
+      alert(err.message || "Failed to reject application")
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
+  const handleNeedsMoreInfo = async () => {
+    setIsProcessing(true)
+    try {
+      await applicationsApi.needsMoreInfo(applicationId, decisionNotes)
+      await fetchApplication()
+    } catch (err: any) {
+      alert(err.message || "Failed to update application")
+    } finally {
+      setIsProcessing(false)
+    }
   }
 
   return (
@@ -67,7 +121,7 @@ export function ReviewApplication({ applicationId, onBack }: ReviewApplicationPr
             <StatusBadge status={application.status} config={applicationStatusConfig} />
           </div>
           <p className="text-sm text-muted-foreground mt-1">
-            {application.applicantName} · {application.company} · Applied {application.appliedDate}
+            {application.name} · {application.company_name} · Applied {new Date(application.created_at).toLocaleDateString()}
           </p>
         </div>
       </div>
@@ -80,10 +134,9 @@ export function ReviewApplication({ applicationId, onBack }: ReviewApplicationPr
             </CardHeader>
             <CardContent>
               <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
-                <InfoField label="Full Name" value={application.applicantName} />
+                <InfoField label="Full Name" value={application.name} />
                 <InfoField label="Email" value={application.email} />
                 <InfoField label="Phone" value={application.phone ?? "—"} />
-                <InfoField label="Partner Type" value={application.partnerType} />
               </dl>
             </CardContent>
           </Card>
@@ -94,9 +147,8 @@ export function ReviewApplication({ applicationId, onBack }: ReviewApplicationPr
             </CardHeader>
             <CardContent>
               <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
-                <InfoField label="Company" value={application.company} />
-                <InfoField label="Target Product" value={application.targetProduct} />
-                <InfoField label="Source" value={application.source ?? "—"} />
+                <InfoField label="Company" value={application.company_name ?? "—"} />
+                <InfoField label="Target Product" value={application.target_product?.name ?? "—"} />
               </dl>
             </CardContent>
           </Card>
@@ -109,14 +161,11 @@ export function ReviewApplication({ applicationId, onBack }: ReviewApplicationPr
               {application.website && (
                 <SocialLink label="Website" url={application.website} />
               )}
-              {application.linkedIn && (
-                <SocialLink label="LinkedIn" url={application.linkedIn} />
+              {application.social_link && (
+                <SocialLink label="Social Link" url={application.social_link} />
               )}
-              {application.twitter && (
-                <SocialLink label="Twitter" url={application.twitter} />
-              )}
-              {!application.website && !application.linkedIn && !application.twitter && (
-                <p className="text-sm text-muted-foreground">No social links provided.</p>
+              {!application.website && !application.social_link && (
+                <p className="text-sm text-muted-foreground">No links provided.</p>
               )}
             </CardContent>
           </Card>
@@ -128,23 +177,18 @@ export function ReviewApplication({ applicationId, onBack }: ReviewApplicationPr
             <CardContent className="space-y-4">
               <div>
                 <p className="text-xs font-medium text-muted-foreground">
-                  How they plan to promote SprintHR
+                  Promotion Plan
                 </p>
-                <p className="text-sm text-foreground mt-1">
-                  {application.promotionPlan ?? "—"}
-                </p>
-              </div>
-              <Separator />
-              <div>
-                <p className="text-xs font-medium text-muted-foreground">Expected audience</p>
-                <p className="text-sm text-foreground mt-1">
-                  {application.expectedAudience ?? "—"}
+                <p className="text-sm text-foreground mt-1 whitespace-pre-wrap">
+                  {application.promotion_plan ?? "—"}
                 </p>
               </div>
               <Separator />
               <div>
-                <p className="text-xs font-medium text-muted-foreground">Audience / Network</p>
-                <p className="text-sm text-foreground mt-1">{application.audienceNetwork}</p>
+                <p className="text-xs font-medium text-muted-foreground">Audience Description</p>
+                <p className="text-sm text-foreground mt-1 whitespace-pre-wrap">
+                  {application.audience_description ?? "—"}
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -183,15 +227,11 @@ export function ReviewApplication({ applicationId, onBack }: ReviewApplicationPr
                     </div>
                     <div>
                       <dt className="text-xs text-muted-foreground">Commission Plan</dt>
-                      <dd>Standard — 10%</dd>
+                      <dd>{approvedDetails.commissionType === 'percentage' ? `${approvedDetails.commissionRate}%` : approvedDetails.commissionRate}</dd>
                     </div>
                     <div>
                       <dt className="text-xs text-muted-foreground">Assigned Product</dt>
-                      <dd>SprintHR</dd>
-                    </div>
-                    <div>
-                      <dt className="text-xs text-muted-foreground">Partner Account Access</dt>
-                      <dd>Portal invite sent to {application.email}</dd>
+                      <dd>{application.target_product?.name}</dd>
                     </div>
                   </dl>
                 </div>
@@ -201,16 +241,26 @@ export function ReviewApplication({ applicationId, onBack }: ReviewApplicationPr
                 <Button
                   className="w-full"
                   onClick={handleApprove}
-                  disabled={application.status === "Approved" || !!approvedDetails}
+                  disabled={application.status === "approved" || !!approvedDetails || isProcessing}
                 >
-                  <Check className="size-4 mr-1.5" />
+                  {isProcessing ? <Loader2 className="size-4 animate-spin mr-1.5" /> : <Check className="size-4 mr-1.5" />}
                   Approve Partner
                 </Button>
-                <Button variant="outline" className="w-full">
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={handleReject}
+                  disabled={application.status === "approved" || application.status === "rejected" || isProcessing}
+                >
                   <X className="size-4 mr-1.5" />
                   Reject
                 </Button>
-                <Button variant="secondary" className="w-full">
+                <Button
+                  variant="secondary"
+                  className="w-full"
+                  onClick={handleNeedsMoreInfo}
+                  disabled={application.status === "approved" || isProcessing}
+                >
                   Request More Info
                 </Button>
               </div>
@@ -234,7 +284,7 @@ function InfoField({ label, value }: { label: string; value: string }) {
 function SocialLink({ label, url }: { label: string; url: string }) {
   return (
     <div className="flex items-center justify-between gap-2">
-      <div>
+      <div className="min-w-0">
         <p className="text-xs text-muted-foreground">{label}</p>
         <p className="text-sm text-foreground truncate">{url}</p>
       </div>

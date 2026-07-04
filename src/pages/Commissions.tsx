@@ -1,4 +1,4 @@
-import * as React from "react"
+import { useEffect, useState } from "react"
 import { MoreHorizontal, Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -18,50 +18,60 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { StatusBadge } from "@/components/shared/StatusBadge"
-import { getPartnerName, mockCommissions } from "@/data/mockAffiliateData"
-import { formatCurrency, formatPercent } from "@/lib/format"
+import { commissionsApi } from "@/services/api"
+import { formatCurrency } from "@/lib/format"
 import { commissionStatusConfig } from "@/lib/statusConfig"
-import type { CommissionStatus } from "@/types/affiliate"
-
-function canApprove(status: CommissionStatus) {
-  return status === "Pending Approval"
-}
-
-function canReject(status: CommissionStatus) {
-  return status === "Pending Approval"
-}
-
-function canAdjust(status: CommissionStatus) {
-  return status === "Pending Approval" || status === "Approved" || status === "For Payout"
-}
-
-function canMoveToPayout(status: CommissionStatus) {
-  return status === "Approved"
-}
 
 export function Commissions() {
-  const [search, setSearch] = React.useState("")
-  const [statusFilter, setStatusFilter] = React.useState<string>("all")
+  const [commissions, setCommissions] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [searchTerm, setSearchTerm] = useState("")
+  const [statusFilter, setStatusFilter] = useState("all")
+  const [isProcessing, setIsProcessing] = useState(false)
 
-  const filtered = mockCommissions.filter((commission) => {
-    const partnerName = getPartnerName(commission.partnerId)
+  useEffect(() => {
+    fetchCommissions()
+  }, [])
+
+  const fetchCommissions = async () => {
+    setLoading(true)
+    try {
+      const data = await commissionsApi.getAll()
+      setCommissions(data)
+    } catch (err) {
+      console.error("Failed to fetch commissions", err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleStatusUpdate = async (id: string, action: 'approve' | 'reject' | 'markForPayout') => {
+    setIsProcessing(true)
+    try {
+      await commissionsApi[action](id)
+      await fetchCommissions()
+    } catch (err: any) {
+      alert(err.message || "Failed to update commission")
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
+  const filteredCommissions = commissions.filter(c => {
     const matchesSearch =
-      search === "" ||
-      partnerName.toLowerCase().includes(search.toLowerCase()) ||
-      commission.deal.toLowerCase().includes(search.toLowerCase()) ||
-      commission.product.toLowerCase().includes(search.toLowerCase()) ||
-      (commission.approvedBy?.toLowerCase().includes(search.toLowerCase()) ?? false)
+      c.partner?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      c.deal?.deal_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      c.product?.name.toLowerCase().includes(searchTerm.toLowerCase())
 
-    const matchesStatus = statusFilter === "all" || commission.status === statusFilter
-
+    const matchesStatus = statusFilter === "all" || c.status === statusFilter
     return matchesSearch && matchesStatus
   })
 
-  const pendingApprovalCount = mockCommissions.filter(
-    (c) => c.status === "Pending Approval"
+  const pendingApprovalCount = commissions.filter(
+    (c) => c.status === "pending_approval"
   ).length
 
-  const forPayoutCount = mockCommissions.filter((c) => c.status === "For Payout").length
+  const forPayoutCount = commissions.filter((c) => c.status === "for_payout").length
 
   return (
     <div className="p-6 space-y-6 max-w-screen-2xl">
@@ -80,21 +90,22 @@ export function Commissions() {
           <Input
             placeholder="Search partner, deal, product..."
             className="pl-9"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[200px]">
+          <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Filter by status" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All statuses</SelectItem>
-            {(Object.keys(commissionStatusConfig) as CommissionStatus[]).map((status) => (
-              <SelectItem key={status} value={status}>
-                {status}
-              </SelectItem>
-            ))}
+            <SelectItem value="pending_approval">Pending Approval</SelectItem>
+            <SelectItem value="approved">Approved</SelectItem>
+            <SelectItem value="for_payout">For Payout</SelectItem>
+            <SelectItem value="paid">Paid</SelectItem>
+            <SelectItem value="rejected">Rejected</SelectItem>
+            <SelectItem value="cancelled">Cancelled</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -102,104 +113,74 @@ export function Commissions() {
       <Card className="border border-border shadow-none">
         <CardContent className="p-0">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border">
-                  <th className="px-6 py-2.5 text-left text-xs font-medium text-muted-foreground">
-                    Partner
-                  </th>
-                  <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">
-                    Deal
-                  </th>
-                  <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground hidden lg:table-cell">
-                    Product
-                  </th>
-                  <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">
-                    Deal Value
-                  </th>
-                  <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground hidden md:table-cell">
-                    Rate
-                  </th>
-                  <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">
-                    Commission Amount
-                  </th>
-                  <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">
-                    Status
-                  </th>
-                  <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground hidden xl:table-cell">
-                    Approved By
-                  </th>
-                  <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground hidden lg:table-cell">
-                    Approved Date
-                  </th>
-                  <th className="px-4 py-2.5 text-right text-xs font-medium text-muted-foreground">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((commission) => (
-                  <tr
-                    key={commission.id}
-                    className="border-b border-border last:border-0 hover:bg-muted/40 transition-colors"
-                  >
-                    <td className="px-6 py-3 font-medium text-foreground">
-                      {getPartnerName(commission.partnerId)}
-                    </td>
-                    <td className="px-4 py-3 text-foreground">{commission.deal}</td>
-                    <td className="px-4 py-3 text-muted-foreground hidden lg:table-cell">
-                      {commission.product}
-                    </td>
-                    <td className="px-4 py-3 text-foreground tabular-nums">
-                      {formatCurrency(commission.baseAmount)}
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground tabular-nums hidden md:table-cell">
-                      {formatPercent(commission.commissionRate)}
-                    </td>
-                    <td className="px-4 py-3 font-medium text-foreground tabular-nums">
-                      {formatCurrency(commission.commissionAmount)}
-                    </td>
-                    <td className="px-4 py-3">
-                      <StatusBadge status={commission.status} config={commissionStatusConfig} />
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground hidden xl:table-cell">
-                      {commission.approvedBy ?? "—"}
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground whitespace-nowrap hidden lg:table-cell">
-                      {commission.approvedDate ?? "—"}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
-                            <MoreHorizontal className="size-4" />
-                            <span className="sr-only">Actions</span>
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem disabled={!canApprove(commission.status)}>
-                            Approve Commission
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            disabled={!canReject(commission.status)}
-                            className="text-destructive focus:text-destructive"
-                          >
-                            Reject Commission
-                          </DropdownMenuItem>
-                          <DropdownMenuItem disabled={!canAdjust(commission.status)}>
-                            Adjust Commission
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem disabled={!canMoveToPayout(commission.status)}>
-                            Move to Payout
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </td>
+            {loading ? (
+              <div className="p-8 text-center text-muted-foreground">Loading commissions...</div>
+            ) : filteredCommissions.length === 0 ? (
+              <div className="p-8 text-center text-muted-foreground">No commissions found.</div>
+            ) : (
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="px-6 py-2.5 text-left text-xs font-medium text-muted-foreground">Partner</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">Deal</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">Product</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">Deal Value</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">Rate</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">Commission Amount</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">Status</th>
+                    <th className="px-4 py-2.5 text-right text-xs font-medium text-muted-foreground">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {filteredCommissions.map((commission) => (
+                    <tr key={commission.id} className="border-b border-border last:border-0 hover:bg-muted/40 transition-colors">
+                      <td className="px-6 py-3 font-medium text-foreground">{commission.partner?.name}</td>
+                      <td className="px-4 py-3 text-foreground">{commission.deal?.deal_name}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{commission.product?.name}</td>
+                      <td className="px-4 py-3 text-foreground tabular-nums">{formatCurrency(commission.base_amount)}</td>
+                      <td className="px-4 py-3 text-muted-foreground tabular-nums">
+                        {commission.commission_type === 'percentage' ? `${commission.commission_rate}%` : formatCurrency(commission.commission_rate)}
+                      </td>
+                      <td className="px-4 py-3 font-medium text-foreground tabular-nums">{formatCurrency(commission.commission_amount)}</td>
+                      <td className="px-4 py-3">
+                        <StatusBadge status={commission.status} config={commissionStatusConfig} />
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" disabled={isProcessing}>
+                              <MoreHorizontal className="size-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              disabled={commission.status !== 'pending_approval'}
+                              onClick={() => handleStatusUpdate(commission.id, 'approve')}
+                            >
+                              Approve Commission
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              disabled={commission.status !== 'pending_approval'}
+                              className="text-destructive"
+                              onClick={() => handleStatusUpdate(commission.id, 'reject')}
+                            >
+                              Reject Commission
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              disabled={commission.status !== 'approved'}
+                              onClick={() => handleStatusUpdate(commission.id, 'markForPayout')}
+                            >
+                              Move to Payout
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
         </CardContent>
       </Card>
