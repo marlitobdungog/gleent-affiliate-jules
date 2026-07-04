@@ -19,8 +19,21 @@ import { RecentApplicationsCard } from "@/components/dashboard/RecentApplication
 import { TopPerformingPartnersCard } from "@/components/dashboard/TopPerformingPartnersCard"
 import { RecentDealsCard } from "@/components/dashboard/RecentDealsCard"
 import { PendingPayoutsCard } from "@/components/dashboard/PendingPayoutsCard"
+import {
+  mockApplications,
+  mockDashboardKpi,
+  mockPendingPayouts,
+  mockPartners,
+  mockRecentDeals,
+} from "@/data/mockAffiliateData"
 import { dashboardApi } from "@/services/api"
 import { formatCurrency, formatNumber } from "@/lib/format"
+import type {
+  AffiliateApplication,
+  PendingPayout,
+  RecentDeal,
+  TopPartner,
+} from "@/types/affiliate"
 
 interface DashboardProps {
   onNavigate: (route: string) => void
@@ -28,8 +41,148 @@ interface DashboardProps {
   onReviewApplication: (applicationId: string) => void
 }
 
+type DashboardSummary = {
+  total_partners: number
+  pending_applications: number
+  active_partners: number
+  total_referrals: number
+  qualified_leads: number
+  closed_deals: number
+  total_commission: number
+  pending_payouts: number
+  recent_applications: unknown[]
+  top_partners: unknown[]
+  recent_deals: unknown[]
+  pending_payouts_list: unknown[]
+}
+
+const fallbackDashboardSummary: DashboardSummary = {
+  total_partners: mockDashboardKpi.totalPartners,
+  pending_applications: mockDashboardKpi.pendingApplications,
+  active_partners: mockDashboardKpi.activePartners,
+  total_referrals: mockDashboardKpi.totalReferrals,
+  qualified_leads: mockDashboardKpi.qualifiedLeads,
+  closed_deals: mockDashboardKpi.closedDeals,
+  total_commission: mockDashboardKpi.totalCommissionEarned,
+  pending_payouts: mockDashboardKpi.pendingPayouts,
+  recent_applications: mockApplications.slice(0, 5).map((app) => ({
+    id: app.id,
+    name: app.applicantName,
+    email: app.email,
+    company_name: app.company,
+    target_product: { name: app.targetProduct },
+    status: app.status,
+    created_at: app.appliedDate,
+  })),
+  top_partners: mockPartners.slice(0, 5).map((partner) => ({
+    id: partner.id,
+    name: partner.name,
+    company_name: partner.company,
+    deals_count: partner.closedDeals,
+    status: partner.status,
+  })),
+  recent_deals: mockRecentDeals.slice(0, 5).map((deal) => ({
+    id: deal.id,
+    deal_name: deal.deal,
+    client_name: deal.client,
+    partner_id: deal.partner,
+    product: { name: deal.product },
+    deal_value: deal.dealValue,
+    status: deal.status,
+  })),
+  pending_payouts_list: mockPendingPayouts.slice(0, 5).map((payout) => ({
+    id: payout.id,
+    partner_id: payout.partner,
+    amount: payout.amount,
+    status: payout.status,
+    created_at: payout.dueDate,
+  })),
+}
+
+function normalizeApplications(items: unknown[]): AffiliateApplication[] {
+  return items.map((item) => {
+    const app = item as Record<string, unknown>
+
+    return {
+      id: String(app.id ?? ""),
+      applicantName: String(app.applicantName ?? app.name ?? ""),
+      email: String(app.email ?? ""),
+      company: String(app.company ?? app.company_name ?? ""),
+      partnerType: (app.partnerType ?? "Agency") as AffiliateApplication["partnerType"],
+      targetProduct: String(
+        app.targetProduct ?? (app.target_product as Record<string, unknown> | undefined)?.name ?? ""
+      ),
+      audienceNetwork: String(app.audienceNetwork ?? app.expectedAudience ?? "N/A"),
+      appliedDate: String(app.appliedDate ?? app.created_at ?? ""),
+      status: (app.status ?? "Submitted") as AffiliateApplication["status"],
+      phone: typeof app.phone === "string" ? app.phone : undefined,
+      website: typeof app.website === "string" ? app.website : undefined,
+      linkedIn: typeof app.linkedIn === "string" ? app.linkedIn : undefined,
+      twitter: typeof app.twitter === "string" ? app.twitter : undefined,
+      promotionPlan: typeof app.promotionPlan === "string" ? app.promotionPlan : undefined,
+      expectedAudience: typeof app.expectedAudience === "string" ? app.expectedAudience : undefined,
+      notes: typeof app.notes === "string" ? app.notes : undefined,
+      source: typeof app.source === "string" ? app.source : undefined,
+    }
+  })
+}
+
+function normalizeTopPartners(items: unknown[]): TopPartner[] {
+  return items.map((item) => {
+    const partner = item as Record<string, unknown>
+
+    return {
+      id: String(partner.id ?? ""),
+      partner: String(partner.partner ?? partner.name ?? ""),
+      code: String(partner.code ?? partner.partner_code ?? ""),
+      referrals: Number(partner.referrals ?? partner.referrals_count ?? partner.deals_count ?? 0),
+      closedDeals: Number(partner.closedDeals ?? partner.deals_count ?? 0),
+      revenueGenerated: Number(partner.revenueGenerated ?? partner.revenue_generated ?? 0),
+      commissionEarned: Number(partner.commissionEarned ?? partner.commission_earned ?? 0),
+    }
+  })
+}
+
+function normalizeRecentDeals(items: unknown[]): RecentDeal[] {
+  return items.map((item) => {
+    const deal = item as Record<string, unknown>
+    const product = deal.product as Record<string, unknown> | undefined
+    const partner = deal.partner as Record<string, unknown> | undefined
+
+    return {
+      id: String(deal.id ?? ""),
+      deal: String(deal.deal ?? deal.deal_name ?? ""),
+      product: String(deal.product ?? product?.name ?? ""),
+      client: String(deal.client ?? deal.client_name ?? ""),
+      partner: String(deal.partner ?? partner?.name ?? deal.partner_name ?? ""),
+      dealValue: Number(deal.dealValue ?? deal.deal_value ?? 0),
+      commission: Number(deal.commission ?? deal.commission_amount ?? 0),
+      status: (deal.status ?? deal.dealStatus ?? "Open") as RecentDeal["status"],
+      closedDate: String(deal.closedDate ?? deal.closed_date ?? ""),
+    }
+  })
+}
+
+function normalizePendingPayouts(items: unknown[]): PendingPayout[] {
+  return items.map((item) => {
+    const payout = item as Record<string, unknown>
+    const partner = payout.partner as Record<string, unknown> | undefined
+
+    return {
+      id: String(payout.id ?? ""),
+      partner: String(payout.partner ?? partner?.name ?? ""),
+      amount: Number(payout.amount ?? 0),
+      commissionPeriod: String(
+        payout.commissionPeriod ?? payout.commission_period ?? payout.payoutPeriod ?? ""
+      ),
+      dueDate: String(payout.dueDate ?? payout.createdDate ?? payout.created_at ?? ""),
+      status: (payout.status ?? "Pending") as PendingPayout["status"],
+    }
+  })
+}
+
 export function Dashboard({ onNavigate, onSelectPartner, onReviewApplication }: DashboardProps) {
-  const [data, setData] = useState<any>(null)
+  const [data, setData] = useState<DashboardSummary>(fallbackDashboardSummary)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -43,6 +196,7 @@ export function Dashboard({ onNavigate, onSelectPartner, onReviewApplication }: 
       setData(summary)
     } catch (err) {
       console.error("Failed to fetch dashboard data", err)
+      setData(fallbackDashboardSummary)
     } finally {
       setLoading(false)
     }
@@ -58,6 +212,10 @@ export function Dashboard({ onNavigate, onSelectPartner, onReviewApplication }: 
   }
 
   const kpi = data
+  const recentApplications = normalizeApplications(kpi.recent_applications)
+  const topPartners = normalizeTopPartners(kpi.top_partners)
+  const recentDeals = normalizeRecentDeals(kpi.recent_deals)
+  const pendingPayouts = normalizePendingPayouts(kpi.pending_payouts_list)
 
   return (
     <div className="p-6 space-y-6 max-w-screen-2xl">
@@ -149,15 +307,7 @@ export function Dashboard({ onNavigate, onSelectPartner, onReviewApplication }: 
 
         <TabsContent value="applications" className="mt-6">
           <RecentApplicationsCard
-            applications={kpi.recent_applications.map((app: any) => ({
-              id: app.id,
-              applicantName: app.name,
-              email: app.email,
-              company: app.company_name,
-              targetProduct: app.target_product?.name,
-              status: app.status,
-              appliedDate: new Date(app.created_at).toLocaleDateString()
-            }))}
+            applications={recentApplications}
             onNavigate={() => onNavigate("applications")}
             onReviewApplication={onReviewApplication}
           />
@@ -165,14 +315,7 @@ export function Dashboard({ onNavigate, onSelectPartner, onReviewApplication }: 
 
         <TabsContent value="partners" className="mt-6">
           <TopPerformingPartnersCard
-            partners={kpi.top_partners.map((p: any) => ({
-              id: p.id,
-              name: p.name,
-              company: p.company_name,
-              referrals: p.deals_count, // Using deals_count as a proxy for performance
-              revenueGenerated: 0, // Placeholder
-              status: p.status
-            }))}
+            partners={topPartners}
             onNavigate={() => onNavigate("partners")}
             onSelectPartner={onSelectPartner}
           />
@@ -180,29 +323,14 @@ export function Dashboard({ onNavigate, onSelectPartner, onReviewApplication }: 
 
         <TabsContent value="deals" className="mt-6">
           <RecentDealsCard
-            deals={kpi.recent_deals.map((d: any) => ({
-              id: d.id,
-              dealName: d.deal_name,
-              client: d.client_name,
-              partnerId: d.partner_id,
-              product: d.product?.name,
-              dealValue: d.deal_value,
-              dealStatus: d.status,
-              commissionStatus: 'pending' // Placeholder
-            }))}
+            deals={recentDeals}
             onNavigate={() => onNavigate("deals")}
           />
         </TabsContent>
 
         <TabsContent value="payouts" className="mt-6">
           <PendingPayoutsCard
-            payouts={kpi.pending_payouts_list.map((p: any) => ({
-              id: p.id,
-              partnerId: p.partner_id,
-              amount: p.amount,
-              status: p.status,
-              createdDate: new Date(p.created_at).toLocaleDateString()
-            }))}
+            payouts={pendingPayouts}
             onNavigate={() => onNavigate("payouts")}
           />
         </TabsContent>

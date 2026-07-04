@@ -25,6 +25,8 @@ This workspace now includes a Laravel backend in [backend](backend) and a Docker
 docker compose up -d --build
 ```
 
+The backend container creates the local SQLite file and runs migrations on startup, so the app is usable from a fresh clone without a manual `php artisan migrate`.
+
 ### Useful commands
 
 ```bash
