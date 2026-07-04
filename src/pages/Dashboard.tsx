@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { useNavigate } from "react-router-dom"
 import {
   Users,
   UserPlus,
@@ -34,12 +35,6 @@ import type {
   RecentDeal,
   TopPartner,
 } from "@/types/affiliate"
-
-interface DashboardProps {
-  onNavigate: (route: string) => void
-  onSelectPartner: (partnerId: string) => void
-  onReviewApplication: (applicationId: string) => void
-}
 
 type DashboardSummary = {
   total_partners: number
@@ -181,7 +176,8 @@ function normalizePendingPayouts(items: unknown[]): PendingPayout[] {
   })
 }
 
-export function Dashboard({ onNavigate, onSelectPartner, onReviewApplication }: DashboardProps) {
+export function Dashboard() {
+  const navigate = useNavigate()
   const [data, setData] = useState<DashboardSummary>(fallbackDashboardSummary)
   const [loading, setLoading] = useState(true)
 
@@ -227,11 +223,11 @@ export function Dashboard({ onNavigate, onSelectPartner, onReviewApplication }: 
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <Button variant="outline" size="sm" onClick={() => onNavigate("applications")}>
+          <Button variant="outline" size="sm" onClick={() => navigate("/admin/applications")}>
             <FileText className="size-4 mr-1.5" />
             Review Applications
           </Button>
-          <Button size="sm" onClick={() => onNavigate("payouts")}>
+          <Button size="sm" onClick={() => navigate("/admin/payouts")}>
             <Plus className="size-4 mr-1.5" />
             Process Payouts
           </Button>
@@ -308,30 +304,30 @@ export function Dashboard({ onNavigate, onSelectPartner, onReviewApplication }: 
         <TabsContent value="applications" className="mt-6">
           <RecentApplicationsCard
             applications={recentApplications}
-            onNavigate={() => onNavigate("applications")}
-            onReviewApplication={onReviewApplication}
+            onNavigate={() => navigate("/admin/applications")}
+            onReviewApplication={(id) => navigate(`/admin/applications/${id}`)}
           />
         </TabsContent>
 
         <TabsContent value="partners" className="mt-6">
           <TopPerformingPartnersCard
             partners={topPartners}
-            onNavigate={() => onNavigate("partners")}
-            onSelectPartner={onSelectPartner}
+            onNavigate={() => navigate("/admin/partners")}
+            onSelectPartner={(id) => navigate(`/admin/partners/${id}`)}
           />
         </TabsContent>
 
         <TabsContent value="deals" className="mt-6">
           <RecentDealsCard
             deals={recentDeals}
-            onNavigate={() => onNavigate("deals")}
+            onNavigate={() => navigate("/admin/deals")}
           />
         </TabsContent>
 
         <TabsContent value="payouts" className="mt-6">
           <PendingPayoutsCard
             payouts={pendingPayouts}
-            onNavigate={() => onNavigate("payouts")}
+            onNavigate={() => navigate("/admin/payouts")}
           />
         </TabsContent>
       </Tabs>

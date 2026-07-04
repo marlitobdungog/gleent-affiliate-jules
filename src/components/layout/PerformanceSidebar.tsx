@@ -24,25 +24,21 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar"
+import { NavLink } from "react-router-dom"
 
 const mainNav = [
-  { label: "Dashboard", icon: LayoutDashboard, route: "dashboard" },
-  { label: "Partners", icon: Users, route: "partners" },
-  { label: "Applications", icon: FileText, route: "applications" },
-  { label: "Referrals", icon: UserPlus, route: "referrals" },
-  { label: "Deals", icon: Handshake, route: "deals" },
-  { label: "Commissions", icon: Coins, route: "commissions" },
-  { label: "Payouts", icon: Wallet, route: "payouts" },
-  { label: "Products", icon: Package, route: "products" },
-  { label: "Settings", icon: Settings, route: "settings" },
+  { label: "Dashboard", icon: LayoutDashboard, route: "/admin/dashboard" },
+  { label: "Partners", icon: Users, route: "/admin/partners" },
+  { label: "Applications", icon: FileText, route: "/admin/applications" },
+  { label: "Referrals", icon: UserPlus, route: "/admin/referrals" },
+  { label: "Deals", icon: Handshake, route: "/admin/deals" },
+  { label: "Commissions", icon: Coins, route: "/admin/commissions" },
+  { label: "Payouts", icon: Wallet, route: "/admin/payouts" },
+  { label: "Products", icon: Package, route: "/admin/products" },
+  { label: "Settings", icon: Settings, route: "/admin/settings" },
 ]
 
-interface PerformanceSidebarProps {
-  activePage: string
-  onNavigate: (route: string) => void
-}
-
-export function PerformanceSidebar({ activePage, onNavigate }: PerformanceSidebarProps) {
+export function PerformanceSidebar() {
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="border-b border-sidebar-border px-4 py-4">
@@ -52,10 +48,10 @@ export function PerformanceSidebar({ activePage, onNavigate }: PerformanceSideba
           </div>
           <div className="flex flex-col min-w-0">
             <span className="text-sm font-semibold text-sidebar-foreground leading-tight truncate">
-              Gleent
+              Admin Portal
             </span>
             <span className="text-xs text-sidebar-foreground/60 leading-tight truncate">
-              Affiliate
+              Gleent Affiliate
             </span>
           </div>
         </div>
@@ -69,13 +65,19 @@ export function PerformanceSidebar({ activePage, onNavigate }: PerformanceSideba
               {mainNav.map((item) => (
                 <SidebarMenuItem key={item.route}>
                   <SidebarMenuButton
-                    isActive={activePage === item.route}
+                    asChild
                     tooltip={item.label}
-                    onClick={() => onNavigate(item.route)}
                     className="cursor-pointer"
                   >
-                    <item.icon />
-                    <span>{item.label}</span>
+                    <NavLink
+                      to={item.route}
+                      className={({ isActive }) =>
+                        isActive ? "bg-accent text-accent-foreground" : ""
+                      }
+                    >
+                      <item.icon />
+                      <span>{item.label}</span>
+                    </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}

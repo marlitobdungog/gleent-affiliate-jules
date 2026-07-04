@@ -1,3 +1,4 @@
+import { useNavigate, useParams } from "react-router-dom"
 import {
   ArrowLeft,
   Copy,
@@ -21,23 +22,20 @@ import {
   referralStatusConfig,
 } from "@/lib/statusConfig"
 
-interface PartnerDetailProps {
-  partnerId: string
-  onBack: () => void
-}
-
-export function PartnerDetail({ partnerId, onBack }: PartnerDetailProps) {
+export function PartnerDetail() {
+  const navigate = useNavigate()
+  const { id: partnerId } = useParams<{ id: string }>()
   const [partner, setPartner] = React.useState<any>(null)
   const [loading, setLoading] = React.useState(true)
 
   React.useEffect(() => {
-    fetchPartner()
+    if (partnerId) fetchPartner()
   }, [partnerId])
 
   const fetchPartner = async () => {
     setLoading(true)
     try {
-      const data = await partnersApi.getById(partnerId)
+      const data = await partnersApi.getById(partnerId!)
       setPartner(data)
     } catch (err) {
       console.error("Failed to fetch partner", err)
@@ -59,7 +57,7 @@ export function PartnerDetail({ partnerId, onBack }: PartnerDetailProps) {
     return (
       <div className="p-6 text-center">
         <p className="text-muted-foreground">Partner not found.</p>
-        <Button variant="ghost" size="sm" className="mt-4" onClick={onBack}>
+        <Button variant="ghost" size="sm" className="mt-4" onClick={() => navigate("/admin/partners")}>
           <ArrowLeft className="size-4 mr-1.5" />
           Back to Partners
         </Button>
@@ -70,7 +68,7 @@ export function PartnerDetail({ partnerId, onBack }: PartnerDetailProps) {
   return (
     <div className="p-6 space-y-6 max-w-screen-2xl">
       <div className="flex items-start gap-4">
-        <Button variant="ghost" size="sm" className="shrink-0 mt-0.5" onClick={onBack}>
+        <Button variant="ghost" size="sm" className="shrink-0 mt-0.5" onClick={() => navigate("/admin/partners")}>
           <ArrowLeft className="size-4" />
         </Button>
         <div className="flex-1 min-w-0">
