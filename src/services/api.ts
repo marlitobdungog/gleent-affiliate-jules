@@ -7,6 +7,45 @@ function getCookie(name: string) {
   return null;
 }
 
+async function parseResponseBody(response: Response) {
+  const text = await response.text();
+
+  if (!text) {
+    return null;
+  }
+
+  const contentType = response.headers.get("content-type") ?? "";
+  if (contentType.includes("application/json")) {
+    try {
+      return JSON.parse(text);
+    } catch {
+      return text;
+    }
+  }
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    return text;
+  }
+}
+
+function toErrorMessage(body: unknown, fallback: string) {
+  if (typeof body === "string") {
+    const stripped = body.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+    return stripped || fallback;
+  }
+
+  if (body && typeof body === "object" && "message" in body) {
+    const message = (body as { message?: unknown }).message;
+    if (typeof message === "string" && message.trim()) {
+      return message;
+    }
+  }
+
+  return fallback;
+}
+
 async function handleResponse(response: Response) {
   if (response.status === 401) {
     localStorage.removeItem("auth_user");
@@ -15,12 +54,15 @@ async function handleResponse(response: Response) {
         window.location.href = "/admin/login";
     }
   }
+
+  const body = await parseResponseBody(response);
+
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: response.statusText }));
+    const error = body && typeof body === "object" ? body : { message: toErrorMessage(body, response.statusText) };
     throw error;
   }
   if (response.status === 204) return null;
-  return response.json();
+  return body;
 }
 
 const getHeaders = () => {
