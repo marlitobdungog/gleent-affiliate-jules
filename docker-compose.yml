@@ -1,13 +1,11 @@
 services:
   frontend:
-    image: node:22-alpine
+    build:
+      context: .
+      dockerfile: docker/frontend/Dockerfile
     restart: unless-stopped
-    working_dir: /app
-    command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port 5173"
-    volumes:
-      - ./:/app
     networks:
-      - sprinthr
+      - gleent_affiliate
 
   backend:
     build:
@@ -15,39 +13,48 @@ services:
       dockerfile: docker/php/Dockerfile
     restart: unless-stopped
     working_dir: /var/www
-    command: sh -lc "mkdir -p database && touch database/database.sqlite && php artisan migrate --force --no-interaction && php-fpm"
-    volumes:
-      - ./backend:/var/www
+    environment:
+      DB_CONNECTION: mysql
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_DATABASE: gleent_affiliate
+      DB_USERNAME: gleent_affiliate
+      DB_PASSWORD: gleent_affiliate
+      APP_URL: http://localhost:8089
+      SANCTUM_STATEFUL_DOMAINS: localhost,localhost:8089,127.0.0.1,127.0.0.1:8089
+    command: >
+      sh -lc "mysql --skip-ssl -h db -uroot -proot -e \"CREATE DATABASE IF NOT EXISTS gleent_affiliate_test; CREATE USER IF NOT EXISTS 'gleent_affiliate'@'%' IDENTIFIED BY 'gleent_affiliate'; GRANT ALL PRIVILEGES ON gleent_affiliate.* TO 'gleent_affiliate'@'%'; GRANT ALL PRIVILEGES ON gleent_affiliate_test.* TO 'gleent_affiliate'@'%'; FLUSH PRIVILEGES;\" &&
+      php artisan migrate --force --no-interaction &&
+      php-fpm"
     depends_on:
       db:
         condition: service_healthy
     networks:
-      - sprinthr
+      - gleent_affiliate
 
   web:
-    image: nginx:1.27-alpine
+    build:
+      context: ./backend
+      dockerfile: docker/nginx/Dockerfile
     restart: unless-stopped
     ports:
       - "8089:80"
-    volumes:
-      - ./backend:/var/www
-      - ./backend/docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
       - frontend
       - backend
     networks:
-      - sprinthr
+      - gleent_affiliate
 
   db:
     image: mysql:8.4
     restart: unless-stopped
     environment:
-      MYSQL_DATABASE: sprinthr
-      MYSQL_USER: sprinthr
-      MYSQL_PASSWORD: sprinthr
+      MYSQL_DATABASE: gleent_affiliate
+      MYSQL_USER: gleent_affiliate
+      MYSQL_PASSWORD: gleent_affiliate
       MYSQL_ROOT_PASSWORD: root
     ports:
-      - "3310:3306"
+      - "3311:3306"
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
@@ -56,11 +63,12 @@ services:
       timeout: 5s
       retries: 10
     networks:
-      - sprinthr
+      - gleent_affiliate
 
 volumes:
   mysql_data:
 
 networks:
-  sprinthr:
+  gleent_affiliate:
+    name: gleent_affiliate
     driver: bridge

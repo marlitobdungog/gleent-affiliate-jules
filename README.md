@@ -8,16 +8,16 @@ This workspace now includes a Laravel backend in [backend](backend) and a Docker
 
 ### Services
 
-- Frontend Vite dev server container (serves ./src)
-- Laravel PHP-FPM app container
-- Nginx reverse proxy on http://localhost:8080
-- MySQL 8.4 on host port 3307
+- Frontend nginx container built from the local Vite app
+- Laravel PHP-FPM app container built from `backend/`
+- MySQL 8.4 database service on host port 3311
+- Nginx reverse proxy on http://localhost:8089
 
 ### Routing behavior
 
-- http://localhost:8080/ -> Frontend app from ./src (Vite)
-- http://localhost:8080/api/* -> Laravel backend
-- http://localhost:8080/up -> Laravel health route
+- http://localhost:8089/ -> Frontend app built into the frontend image
+- http://localhost:8089/api/* -> Laravel backend
+- http://localhost:8089/up -> Laravel health route
 
 ### Start backend stack
 
@@ -25,20 +25,20 @@ This workspace now includes a Laravel backend in [backend](backend) and a Docker
 docker compose up -d --build
 ```
 
-The backend container creates the local SQLite file and runs migrations on startup, so the app is usable from a fresh clone without a manual `php artisan migrate`.
+The backend container creates the test database and runs migrations on startup, so the app is usable from a fresh clone without a manual `php artisan migrate`.
 
 ### Useful commands
 
 ```bash
-docker compose exec app php artisan migrate
-docker compose exec app php artisan test
+docker compose exec backend php artisan migrate
+docker compose exec backend php artisan test
 docker compose down
 ```
 
 ### Database defaults
 
 - Host: `db` (inside Docker network) / `127.0.0.1` (from host)
-- Port: `3306` (inside Docker) / `3307` (from host)
-- Database: `sprinthr`
-- Username: `sprinthr`
-- Password: `sprinthr`
+- Port: `3306` (inside Docker) / `3311` (from host)
+- Database: `gleent_affiliate`
+- Username: `gleent_affiliate`
+- Password: `gleent_affiliate`
