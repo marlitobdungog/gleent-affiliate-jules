@@ -12,25 +12,31 @@ import { Payouts } from "@/pages/Payouts"
 import { Products } from "@/pages/Products"
 import { Settings } from "@/pages/Settings"
 import { Login } from "@/pages/Login"
+import { Register } from "@/pages/Register"
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute"
 
-export function App() {
+function App() {
   return (
     <Routes>
       <Route path="/admin/login" element={<Login />} />
+      <Route path="/admin/register" element={<Register />} />
 
-      <Route path="/admin" element={<PerformanceShell />}>
-        <Route index element={<Navigate to="/admin/dashboard" replace />} />
-        <Route path="dashboard" element={<Dashboard />} />
-        <Route path="partners" element={<Partners />} />
-        <Route path="partners/:id" element={<PartnerDetail />} />
-        <Route path="applications" element={<Applications />} />
-        <Route path="applications/:id" element={<ReviewApplication />} />
-        <Route path="referrals" element={<Referrals />} />
-        <Route path="deals" element={<Deals />} />
-        <Route path="commissions" element={<Commissions />} />
-        <Route path="payouts" element={<Payouts />} />
-        <Route path="products" element={<Products />} />
-        <Route path="settings" element={<Settings />} />
+      {/* Protected Admin Routes */}
+      <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>
+        <Route path="/admin" element={<PerformanceShell />}>
+          <Route index element={<Navigate to="/admin/dashboard" replace />} />
+          <Route path="dashboard" element={<Dashboard />} />
+          <Route path="partners" element={<Partners />} />
+          <Route path="partners/:id" element={<PartnerDetail />} />
+          <Route path="applications" element={<Applications />} />
+          <Route path="applications/:id" element={<ReviewApplication />} />
+          <Route path="referrals" element={<Referrals />} />
+          <Route path="deals" element={<Deals />} />
+          <Route path="commissions" element={<Commissions />} />
+          <Route path="payouts" element={<Payouts />} />
+          <Route path="products" element={<Products />} />
+          <Route path="settings" element={<Settings />} />
+        </Route>
       </Route>
 
       <Route path="/" element={<Navigate to="/admin/login" replace />} />

@@ -9,7 +9,7 @@ import { authApi } from "@/services/api"
 import { useAuth } from "@/hooks/useAuth"
 import * as React from "react"
 
-export function Login() {
+export function Register() {
   const navigate = useNavigate()
   const { login, user } = useAuth()
   const [loading, setLoading] = useState(false)
@@ -21,20 +21,25 @@ export function Login() {
   }, [user, navigate])
   const [error, setError] = useState<string | null>(null)
   const [formData, setFormData] = useState({
+    name: "",
     email: "",
     password: "",
+    password_confirmation: "",
   })
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError(null)
     try {
-      const response = await authApi.login(formData)
+      const response = await authApi.register({
+        ...formData,
+        role: "admin",
+      })
       login(response.user)
       navigate("/admin/dashboard")
     } catch (err: any) {
-      setError(err.message || "Invalid credentials")
+      setError(err.message || "Failed to register")
     } finally {
       setLoading(false)
     }
@@ -54,18 +59,29 @@ export function Login() {
         </div>
         <Card className="shadow-none">
           <CardHeader>
-            <CardTitle className="text-xl">Welcome back</CardTitle>
+            <CardTitle className="text-xl">Create an account</CardTitle>
             <CardDescription>
-              Login to your account to manage the affiliate program.
+              Enter your details to register as an admin.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleLogin} className="grid gap-6">
+            <form onSubmit={handleRegister} className="grid gap-6">
               {error && (
                 <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-lg">
                   {error}
                 </div>
               )}
+              <div className="grid gap-2">
+                <Label htmlFor="name">Name</Label>
+                <Input
+                  id="name"
+                  type="text"
+                  placeholder="Admin Name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  required
+                />
+              </div>
               <div className="grid gap-2">
                 <Label htmlFor="email">Email</Label>
                 <Input
@@ -78,9 +94,7 @@ export function Login() {
                 />
               </div>
               <div className="grid gap-2">
-                <div className="flex items-center">
-                  <Label htmlFor="password">Password</Label>
-                </div>
+                <Label htmlFor="password">Password</Label>
                 <Input
                   id="password"
                   type="password"
@@ -89,15 +103,25 @@ export function Login() {
                   required
                 />
               </div>
+              <div className="grid gap-2">
+                <Label htmlFor="password_confirmation">Confirm Password</Label>
+                <Input
+                  id="password_confirmation"
+                  type="password"
+                  value={formData.password_confirmation}
+                  onChange={(e) => setFormData({ ...formData, password_confirmation: e.target.value })}
+                  required
+                />
+              </div>
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading && <Loader2 className="size-4 animate-spin mr-2" />}
-                Login
+                Register
               </Button>
             </form>
             <div className="mt-4 text-center text-sm">
-              Don't have an account?{" "}
-              <Link to="/admin/register" className="text-primary hover:underline font-medium">
-                Register
+              Already have an account?{" "}
+              <Link to="/admin/login" className="text-primary hover:underline font-medium">
+                Login
               </Link>
             </div>
           </CardContent>
@@ -107,4 +131,4 @@ export function Login() {
   )
 }
 
-export default Login
+export default Register

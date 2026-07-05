@@ -10,6 +10,7 @@ import {
   Settings,
   ChevronRight,
   BarChart3,
+  LogOut,
 } from "lucide-react"
 import {
   Sidebar,
@@ -24,7 +25,9 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar"
-import { NavLink } from "react-router-dom"
+import { NavLink, useNavigate } from "react-router-dom"
+import { useAuth } from "@/hooks/useAuth"
+import { authApi } from "@/services/api"
 
 const mainNav = [
   { label: "Dashboard", icon: LayoutDashboard, route: "/admin/dashboard" },
@@ -39,6 +42,20 @@ const mainNav = [
 ]
 
 export function PerformanceSidebar() {
+  const { user, logout } = useAuth()
+  const navigate = useNavigate()
+
+  const handleLogout = async () => {
+    try {
+      await authApi.logout()
+    } catch (err) {
+      console.error("Logout failed", err)
+    } finally {
+      logout()
+      navigate("/admin/login")
+    }
+  }
+
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="border-b border-sidebar-border px-4 py-4">
@@ -86,7 +103,25 @@ export function PerformanceSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="border-t border-sidebar-border px-3 py-3">
+      <SidebarFooter className="border-t border-sidebar-border px-3 py-3 space-y-2">
+        {user && (
+          <div className="px-2 py-1.5 flex flex-col min-w-0">
+            <span className="text-xs font-medium text-sidebar-foreground truncate">{user.name}</span>
+            <span className="text-[10px] text-sidebar-foreground/60 truncate">{user.email}</span>
+          </div>
+        )}
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              onClick={handleLogout}
+              className="cursor-pointer text-destructive hover:text-destructive hover:bg-destructive/10"
+              tooltip="Logout"
+            >
+              <LogOut className="size-4" />
+              <span>Logout</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
         <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs text-sidebar-foreground/50">
           <ChevronRight className="size-3 shrink-0" />
           <span className="truncate">Connected to SprintHR Core</span>
