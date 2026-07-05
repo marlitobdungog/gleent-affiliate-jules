@@ -2,7 +2,12 @@ import { Navigate, Outlet } from "react-router-dom"
 import { useAuth } from "@/hooks/useAuth"
 import { Loader2 } from "lucide-react"
 
-export function ProtectedRoute({ allowedRoles }: { allowedRoles?: ("admin" | "partner")[] }) {
+interface ProtectedRouteProps {
+  allowedRoles?: ("admin" | "partner")[]
+  loginPath?: string
+}
+
+export function ProtectedRoute({ allowedRoles, loginPath = "/admin/login" }: ProtectedRouteProps) {
   const { user, isLoading } = useAuth()
 
   if (isLoading) {
@@ -14,13 +19,12 @@ export function ProtectedRoute({ allowedRoles }: { allowedRoles?: ("admin" | "pa
   }
 
   if (!user) {
-    return <Navigate to="/admin/login" replace />
+    return <Navigate to={loginPath} replace />
   }
 
   if (allowedRoles && !allowedRoles.includes(user.role)) {
-    // If user is logged in but doesn't have the right role
-    // We redirect to a safe place or back to login if they shouldn't be here
-    return <Navigate to="/admin/login" replace />
+    const redirectPath = user.role === "partner" ? "/partner/dashboard" : "/admin/dashboard"
+    return <Navigate to={redirectPath} replace />
   }
 
   return <Outlet />
