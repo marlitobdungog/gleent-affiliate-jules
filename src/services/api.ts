@@ -49,9 +49,10 @@ function toErrorMessage(body: unknown, fallback: string) {
 async function handleResponse(response: Response) {
   if (response.status === 401) {
     localStorage.removeItem("auth_user");
-    // Only redirect if not already on login page to avoid loops
-    if (!window.location.pathname.includes("/admin/login")) {
-        window.location.href = "/admin/login";
+    const path = window.location.pathname;
+    if (!path.includes("/login") && !path.includes("/register")) {
+      const loginPath = path.startsWith("/partner") ? "/partner/login" : "/admin/login";
+      window.location.href = loginPath;
     }
   }
 
@@ -195,4 +196,15 @@ export const authApi = {
   },
   logout: () => api.post('/logout', {}),
   me: () => api.get('/me'),
+};
+
+export const partnerAuthApi = {
+  register: async (data: any) => {
+    await authApi.getCsrfCookie();
+    return api.post('/partner/register', data);
+  },
+  login: async (data: any) => {
+    await authApi.getCsrfCookie();
+    return api.post('/partner/login', data);
+  },
 };

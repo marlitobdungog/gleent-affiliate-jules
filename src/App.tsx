@@ -13,6 +13,9 @@ import { Products } from "@/pages/Products"
 import { Settings } from "@/pages/Settings"
 import { Login } from "@/pages/Login"
 import { Register } from "@/pages/Register"
+import { PartnerLogin } from "@/pages/partner/PartnerLogin"
+import { PartnerRegister } from "@/pages/partner/PartnerRegister"
+import { PartnerDashboard } from "@/pages/partner/PartnerDashboard"
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute"
 
 function App() {
@@ -20,9 +23,11 @@ function App() {
     <Routes>
       <Route path="/admin/login" element={<Login />} />
       <Route path="/admin/register" element={<Register />} />
+      <Route path="/partner/login" element={<PartnerLogin />} />
+      <Route path="/partner/register" element={<PartnerRegister />} />
 
       {/* Protected Admin Routes */}
-      <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>
+      <Route element={<ProtectedRoute allowedRoles={["admin"]} loginPath="/admin/login" />}>
         <Route path="/admin" element={<PerformanceShell />}>
           <Route index element={<Navigate to="/admin/dashboard" replace />} />
           <Route path="dashboard" element={<Dashboard />} />
@@ -37,6 +42,11 @@ function App() {
           <Route path="products" element={<Products />} />
           <Route path="settings" element={<Settings />} />
         </Route>
+      </Route>
+
+      {/* Protected Partner Routes */}
+      <Route element={<ProtectedRoute allowedRoles={["partner"]} loginPath="/partner/login" />}>
+        <Route path="/partner/dashboard" element={<PartnerDashboard />} />
       </Route>
 
       <Route path="/" element={<Navigate to="/admin/login" replace />} />

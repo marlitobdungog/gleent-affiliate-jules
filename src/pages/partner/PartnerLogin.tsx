@@ -2,25 +2,26 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { BarChart3, Loader2 } from "lucide-react"
+import { Handshake, Loader2 } from "lucide-react"
 import { useNavigate, Link } from "react-router-dom"
 import { useState } from "react"
-import { authApi } from "@/services/api"
+import { partnerAuthApi } from "@/services/api"
 import { useAuth } from "@/hooks/useAuth"
 import * as React from "react"
 
-export function Login() {
+export function PartnerLogin() {
   const navigate = useNavigate()
   const { login, user } = useAuth()
   const [loading, setLoading] = useState(false)
 
   React.useEffect(() => {
-    if (user?.role === "admin") {
-      navigate("/admin/dashboard")
-    } else if (user?.role === "partner") {
+    if (user?.role === "partner") {
       navigate("/partner/dashboard")
+    } else if (user?.role === "admin") {
+      navigate("/admin/dashboard")
     }
   }, [user, navigate])
+
   const [error, setError] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     email: "",
@@ -32,9 +33,9 @@ export function Login() {
     setLoading(true)
     setError(null)
     try {
-      const response = await authApi.login(formData)
+      const response = await partnerAuthApi.login(formData)
       login(response.user)
-      navigate("/admin/dashboard")
+      navigate("/partner/dashboard")
     } catch (err: any) {
       setError(err.message || "Invalid credentials")
     } finally {
@@ -47,10 +48,10 @@ export function Login() {
       <div className="flex w-full max-w-sm flex-col gap-6">
         <div className="flex flex-col items-center gap-2">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <BarChart3 className="size-6" />
+            <Handshake className="size-6" />
           </div>
           <div className="flex flex-col items-center">
-            <span className="text-xl font-bold">Admin Portal</span>
+            <span className="text-xl font-bold">Partner Portal</span>
             <span className="text-sm text-muted-foreground">Gleent Affiliate</span>
           </div>
         </div>
@@ -58,7 +59,7 @@ export function Login() {
           <CardHeader>
             <CardTitle className="text-xl">Welcome back</CardTitle>
             <CardDescription>
-              Login to your account to manage the affiliate program.
+              Login to track referrals, commissions, and payouts.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -73,16 +74,14 @@ export function Login() {
                 <Input
                   id="email"
                   type="email"
-                  placeholder="admin@example.com"
+                  placeholder="partner@example.com"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   required
                 />
               </div>
               <div className="grid gap-2">
-                <div className="flex items-center">
-                  <Label htmlFor="password">Password</Label>
-                </div>
+                <Label htmlFor="password">Password</Label>
                 <Input
                   id="password"
                   type="password"
@@ -98,7 +97,7 @@ export function Login() {
             </form>
             <div className="mt-4 text-center text-sm">
               Don't have an account?{" "}
-              <Link to="/admin/register" className="text-primary hover:underline font-medium">
+              <Link to="/partner/register" className="text-primary hover:underline font-medium">
                 Register
               </Link>
             </div>
@@ -109,4 +108,4 @@ export function Login() {
   )
 }
 
-export default Login
+export default PartnerLogin
