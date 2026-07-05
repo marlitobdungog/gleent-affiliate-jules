@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { useNavigate } from "react-router-dom"
 import { Search, Plus, MoreHorizontal, Pencil, Trash2, Eye } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
@@ -28,11 +29,8 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 
-interface PartnersProps {
-  onSelectPartner: (partnerId: string) => void
-}
-
-export function Partners({ onSelectPartner }: PartnersProps) {
+export function Partners() {
+  const navigate = useNavigate()
   const [partners, setPartners] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
@@ -193,7 +191,7 @@ export function Partners({ onSelectPartner }: PartnersProps) {
                     <tr
                       key={partner.id}
                       className="border-b border-border last:border-0 hover:bg-muted/40 transition-colors cursor-pointer"
-                      onClick={() => onSelectPartner(partner.id)}
+                      onClick={() => navigate(`/admin/partners/${partner.id}`)}
                     >
                       <td className="px-6 py-3">
                         <div className="font-medium text-foreground">{partner.name}</div>
@@ -219,7 +217,7 @@ export function Partners({ onSelectPartner }: PartnersProps) {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => onSelectPartner(partner.id)}>
+                            <DropdownMenuItem onClick={() => navigate(`/admin/partners/${partner.id}`)}>
                               <Eye className="size-4 mr-2" /> View
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => handleOpenEditModal(partner)}>

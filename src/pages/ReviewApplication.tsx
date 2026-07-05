@@ -1,4 +1,5 @@
 import * as React from "react"
+import { useNavigate, useParams } from "react-router-dom"
 import { ArrowLeft, Check, ExternalLink, X, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -9,12 +10,9 @@ import { StatusBadge } from "@/components/shared/StatusBadge"
 import { applicationsApi } from "@/services/api"
 import { applicationStatusConfig } from "@/lib/statusConfig"
 
-interface ReviewApplicationProps {
-  applicationId: string
-  onBack: () => void
-}
-
-export function ReviewApplication({ applicationId, onBack }: ReviewApplicationProps) {
+export function ReviewApplication() {
+  const navigate = useNavigate()
+  const { id: applicationId } = useParams<{ id: string }>()
   const [application, setApplication] = React.useState<any>(null)
   const [loading, setLoading] = React.useState(true)
   const [decisionNotes, setDecisionNotes] = React.useState("")
@@ -27,13 +25,13 @@ export function ReviewApplication({ applicationId, onBack }: ReviewApplicationPr
   } | null>(null)
 
   React.useEffect(() => {
-    fetchApplication()
+    if (applicationId) fetchApplication()
   }, [applicationId])
 
   const fetchApplication = async () => {
     setLoading(true)
     try {
-      const data = await applicationsApi.getById(applicationId)
+      const data = await applicationsApi.getById(applicationId!)
       setApplication(data)
       setDecisionNotes(data.review_notes ?? "")
     } catch (err) {
@@ -56,7 +54,7 @@ export function ReviewApplication({ applicationId, onBack }: ReviewApplicationPr
     return (
       <div className="p-6 text-center">
         <p className="text-muted-foreground">Application not found.</p>
-        <Button variant="ghost" size="sm" className="mt-4" onClick={onBack}>
+        <Button variant="ghost" size="sm" className="mt-4" onClick={() => navigate("/admin/applications")}>
           <ArrowLeft className="size-4 mr-1.5" />
           Back to Applications
         </Button>
@@ -67,7 +65,7 @@ export function ReviewApplication({ applicationId, onBack }: ReviewApplicationPr
   const handleApprove = async () => {
     setIsProcessing(true)
     try {
-      const partner = await applicationsApi.approve(applicationId)
+      const partner = await applicationsApi.approve(applicationId!)
       setApprovedDetails({
         partnerCode: partner.partner_code,
         partnerLink: partner.partner_link,
@@ -85,9 +83,9 @@ export function ReviewApplication({ applicationId, onBack }: ReviewApplicationPr
   const handleReject = async () => {
     setIsProcessing(true)
     try {
-      await applicationsApi.reject(applicationId, decisionNotes)
+      await applicationsApi.reject(applicationId!, decisionNotes)
       await fetchApplication()
-      onBack()
+      navigate("/admin/applications")
     } catch (err: any) {
       alert(err.message || "Failed to reject application")
     } finally {
@@ -98,7 +96,7 @@ export function ReviewApplication({ applicationId, onBack }: ReviewApplicationPr
   const handleNeedsMoreInfo = async () => {
     setIsProcessing(true)
     try {
-      await applicationsApi.needsMoreInfo(applicationId, decisionNotes)
+      await applicationsApi.needsMoreInfo(applicationId!, decisionNotes)
       await fetchApplication()
     } catch (err: any) {
       alert(err.message || "Failed to update application")
@@ -110,7 +108,7 @@ export function ReviewApplication({ applicationId, onBack }: ReviewApplicationPr
   return (
     <div className="p-6 space-y-6 max-w-screen-2xl">
       <div className="flex items-start gap-4">
-        <Button variant="ghost" size="sm" className="shrink-0 mt-0.5" onClick={onBack}>
+        <Button variant="ghost" size="sm" className="shrink-0 mt-0.5" onClick={() => navigate("/admin/applications")}>
           <ArrowLeft className="size-4" />
         </Button>
         <div className="flex-1 min-w-0">

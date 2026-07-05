@@ -1,6 +1,20 @@
 const API_BASE_URL = '/api';
 
+function getCookie(name: string) {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop()?.split(';').shift();
+  return null;
+}
+
 async function handleResponse(response: Response) {
+  if (response.status === 401) {
+    localStorage.removeItem("auth_user");
+    // Only redirect if not already on login page to avoid loops
+    if (!window.location.pathname.includes("/admin/login")) {
+        window.location.href = "/admin/login";
+    }
+  }
   if (!response.ok) {
     const error = await response.json().catch(() => ({ message: response.statusText }));
     throw error;
@@ -9,23 +23,45 @@ async function handleResponse(response: Response) {
   return response.json();
 }
 
+const getHeaders = () => {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+  };
+
+  const csrfToken = getCookie('XSRF-TOKEN');
+  if (csrfToken) {
+    headers['X-XSRF-TOKEN'] = decodeURIComponent(csrfToken);
+  }
+
+  return headers;
+};
+
 export const api = {
-  get: (url: string) => fetch(`${API_BASE_URL}${url}`).then(handleResponse),
+  get: (url: string) =>
+    fetch(`${API_BASE_URL}${url}`, {
+        headers: getHeaders(),
+        credentials: 'include'
+    }).then(handleResponse),
   post: (url: string, data: any) =>
     fetch(`${API_BASE_URL}${url}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getHeaders(),
       body: JSON.stringify(data),
+      credentials: 'include'
     }).then(handleResponse),
   put: (url: string, data: any) =>
     fetch(`${API_BASE_URL}${url}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getHeaders(),
       body: JSON.stringify(data),
+      credentials: 'include'
     }).then(handleResponse),
   delete: (url: string) =>
     fetch(`${API_BASE_URL}${url}`, {
       method: 'DELETE',
+      headers: getHeaders(),
+      credentials: 'include'
     }).then(handleResponse),
 };
 
@@ -103,4 +139,18 @@ export const settingsApi = {
 
 export const dashboardApi = {
   getSummary: () => api.get('/dashboard/summary'),
+};
+
+export const authApi = {
+  getCsrfCookie: () => fetch('/sanctum/csrf-cookie', { credentials: 'include' }),
+  register: async (data: any) => {
+    await authApi.getCsrfCookie();
+    return api.post('/register', data);
+  },
+  login: async (data: any) => {
+    await authApi.getCsrfCookie();
+    return api.post('/login', data);
+  },
+  logout: () => api.post('/logout', {}),
+  me: () => api.get('/me'),
 };

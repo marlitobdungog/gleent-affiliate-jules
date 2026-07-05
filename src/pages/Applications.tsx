@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { useNavigate } from "react-router-dom"
 import { Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -14,11 +15,8 @@ import { StatusBadge } from "@/components/shared/StatusBadge"
 import { applicationsApi } from "@/services/api"
 import { applicationStatusConfig } from "@/lib/statusConfig"
 
-interface ApplicationsProps {
-  onReviewApplication: (applicationId: string) => void
-}
-
-export function Applications({ onReviewApplication }: ApplicationsProps) {
+export function Applications() {
+  const navigate = useNavigate()
   const [applications, setApplications] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
@@ -151,7 +149,7 @@ export function Applications({ onReviewApplication }: ApplicationsProps) {
                           variant="ghost"
                           size="sm"
                           className="h-7 text-xs"
-                          onClick={() => onReviewApplication(app.id)}
+                          onClick={() => navigate(`/admin/applications/${app.id}`)}
                         >
                           Review
                         </Button>
