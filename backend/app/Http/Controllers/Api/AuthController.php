@@ -96,7 +96,7 @@ class AuthController extends Controller
             'password' => 'required',
         ]);
 
-        if (!Auth::attempt($request->only('email', 'password'), $request->boolean('remember'))) {
+        if (! Auth::attempt($request->only('email', 'password'), $request->boolean('remember'))) {
             throw ValidationException::withMessages([
                 'email' => ['Invalid credentials'],
             ]);
@@ -104,7 +104,7 @@ class AuthController extends Controller
 
         $user = Auth::user();
 
-        if (!$roleCheck($user)) {
+        if (! $roleCheck($user)) {
             Auth::logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();
@@ -135,6 +135,12 @@ class AuthController extends Controller
 
     public function me(Request $request)
     {
-        return response()->json($request->user());
+        $user = $request->user();
+
+        if ($user->isPartner()) {
+            $user->load('partner');
+        }
+
+        return response()->json($user);
     }
 }

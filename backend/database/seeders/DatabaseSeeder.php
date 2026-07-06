@@ -20,6 +20,7 @@ class DatabaseSeeder extends Seeder
             DealSeeder::class,
             CommissionSeeder::class,
             PayoutSeeder::class,
+            MarketingAssetSeeder::class,
         ]);
     }
 }
