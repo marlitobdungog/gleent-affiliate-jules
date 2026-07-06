@@ -3,12 +3,11 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Setting;
+use App\Http\Requests\RegisterPartnerApplicationRequest;
 use App\Models\User;
-use App\Services\PartnerService;
+use App\Services\ApplicationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 
@@ -41,47 +40,14 @@ class AuthController extends Controller
         return $this->authenticate($request, fn (User $user) => $user->isAdmin());
     }
 
-    public function registerPartner(Request $request, PartnerService $partnerService)
+    public function registerPartner(RegisterPartnerApplicationRequest $request, ApplicationService $applicationService)
     {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users|unique:partners',
-            'password' => 'required|string|min:8|confirmed',
-            'company_name' => 'nullable|string|max:255',
-            'phone' => 'nullable|string|max:20',
-        ]);
-
-        $defaultType = Setting::where('key', 'default_commission_type')->value('value') ?? 'percentage';
-        $defaultRate = Setting::where('key', 'default_commission_rate')->value('value') ?? 10;
-
-        $user = DB::transaction(function () use ($request, $partnerService, $defaultType, $defaultRate) {
-            $user = User::create([
-                'name' => $request->name,
-                'email' => $request->email,
-                'password' => Hash::make($request->password),
-                'role' => 'partner',
-            ]);
-
-            $partnerService->createPartner([
-                'user_id' => $user->id,
-                'name' => $request->name,
-                'email' => $request->email,
-                'phone' => $request->phone,
-                'company_name' => $request->company_name,
-                'status' => 'pending',
-                'commission_type' => $defaultType,
-                'commission_rate' => $defaultRate,
-                'joined_at' => now(),
-            ]);
-
-            return $user;
-        });
-
-        Auth::login($user);
+        $application = $applicationService->submit($request->validated());
 
         return response()->json([
-            'user' => $user,
-        ]);
+            'message' => 'Application submitted successfully. You will receive access once approved.',
+            'application' => $application->load('targetProduct'),
+        ], 201);
     }
 
     public function loginPartner(Request $request)
@@ -96,7 +62,7 @@ class AuthController extends Controller
             'password' => 'required',
         ]);
 
-        if (!Auth::attempt($request->only('email', 'password'), $request->boolean('remember'))) {
+        if (! Auth::attempt($request->only('email', 'password'), $request->boolean('remember'))) {
             throw ValidationException::withMessages([
                 'email' => ['Invalid credentials'],
             ]);
@@ -104,7 +70,7 @@ class AuthController extends Controller
 
         $user = Auth::user();
 
-        if (!$roleCheck($user)) {
+        if (! $roleCheck($user)) {
             Auth::logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();
@@ -135,6 +101,12 @@ class AuthController extends Controller
 
     public function me(Request $request)
     {
-        return response()->json($request->user());
+        $user = $request->user();
+
+        if ($user->isPartner()) {
+            $user->load('partner');
+        }
+
+        return response()->json($user);
     }
 }

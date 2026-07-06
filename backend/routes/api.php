@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\CommissionController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\DealController;
 use App\Http\Controllers\Api\PartnerController;
+use App\Http\Controllers\Api\PartnerPortalController;
 use App\Http\Controllers\Api\PayoutController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\ReferralController;
@@ -44,4 +45,19 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('settings', [SettingController::class, 'index']);
     Route::put('settings', [SettingController::class, 'update']);
+
+    Route::middleware('partner')->prefix('partner')->group(function () {
+        Route::get('profile', [PartnerPortalController::class, 'profile']);
+        Route::put('profile', [PartnerPortalController::class, 'updateProfile']);
+        Route::put('password', [PartnerPortalController::class, 'changePassword']);
+        Route::get('dashboard', [PartnerPortalController::class, 'dashboard']);
+        Route::get('referrals', [PartnerPortalController::class, 'referrals']);
+        Route::post('referrals', [PartnerPortalController::class, 'storeReferral']);
+        Route::get('lead-stages', [PartnerPortalController::class, 'leadStages']);
+        Route::get('commissions', [PartnerPortalController::class, 'commissions']);
+        Route::get('payouts', [PartnerPortalController::class, 'payouts']);
+        Route::get('products', [PartnerPortalController::class, 'products']);
+        Route::get('marketing-assets', [PartnerPortalController::class, 'marketingAssets']);
+        Route::get('marketing-assets/{marketingAsset}/download', [PartnerPortalController::class, 'downloadMarketingAsset']);
+    });
 });

@@ -26,8 +26,9 @@ class ApplicationController extends Controller
 
     public function store(StoreApplicationRequest $request): JsonResponse
     {
-        $application = Application::create($request->validated());
-        return response()->json($application, 201);
+        $application = $this->applicationService->submit($request->validated());
+
+        return response()->json($application->load('targetProduct'), 201);
     }
 
     public function show(Application $application): JsonResponse
@@ -49,8 +50,12 @@ class ApplicationController extends Controller
 
     public function approve(Application $application): JsonResponse
     {
-        $partner = $this->applicationService->approve($application);
-        return response()->json($partner);
+        $result = $this->applicationService->approve($application);
+
+        return response()->json([
+            'partner' => $result['partner'],
+            'login_credentials' => $result['login_credentials'],
+        ]);
     }
 
     public function reject(Application $application, Request $request): JsonResponse
