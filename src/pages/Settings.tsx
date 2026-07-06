@@ -56,7 +56,7 @@ export function Settings() {
 
   if (loading) {
     return (
-      <div className="p-6 flex flex-col items-center justify-center min-h-[400px]">
+      <div className="mx-auto w-full max-w-2xl p-6 flex flex-col items-center justify-center min-h-[400px]">
         <Loader2 className="size-8 animate-spin text-primary" />
         <p className="text-muted-foreground mt-4">Loading settings...</p>
       </div>
@@ -64,7 +64,7 @@ export function Settings() {
   }
 
   return (
-    <div className="p-6 space-y-6 max-w-2xl">
+    <div className="mx-auto w-full max-w-2xl p-6 space-y-6">
       <div>
         <h1 className="text-xl font-semibold text-foreground tracking-tight">Settings</h1>
         <p className="text-sm text-muted-foreground mt-1">
