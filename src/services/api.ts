@@ -208,3 +208,35 @@ export const partnerAuthApi = {
     return api.post('/partner/login', data);
   },
 };
+
+export const partnerPortalApi = {
+  getProfile: () => api.get('/partner/profile'),
+  updateProfile: (data: {
+    name: string
+    email: string
+    company_name?: string
+    phone?: string
+  }) => api.put('/partner/profile', data),
+  changePassword: (data: {
+    current_password: string
+    password: string
+    password_confirmation: string
+  }) => api.put('/partner/password', data),
+  getDashboard: () => api.get('/partner/dashboard'),
+  getReferrals: () => api.get('/partner/referrals'),
+  submitReferral: (data: {
+    product_id: number
+    lead_name: string
+    lead_email: string
+    company_name: string
+    notes?: string
+  }) => api.post('/partner/referrals', data),
+  getLeadStages: () => api.get('/partner/lead-stages'),
+  getCommissions: () => api.get('/partner/commissions'),
+  getPayouts: () => api.get('/partner/payouts'),
+  getProducts: () => api.get('/partner/products'),
+  getMarketingAssets: () => api.get('/partner/marketing-assets'),
+  downloadMarketingAsset: (assetId: string) => {
+    window.open(`/api/partner/marketing-assets/${assetId}/download`, '_blank');
+  },
+};

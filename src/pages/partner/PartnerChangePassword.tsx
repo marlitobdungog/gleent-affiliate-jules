@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { partnerPortalApi } from "@/services/api"
 import { toast } from "sonner"
 
 export function PartnerChangePassword() {
@@ -25,10 +26,21 @@ export function PartnerChangePassword() {
       return
     }
     setSaving(true)
-    await new Promise((r) => setTimeout(r, 500))
-    toast.success("Password changed successfully (demo)")
-    setFormData({ currentPassword: "", newPassword: "", confirmPassword: "" })
-    setSaving(false)
+    try {
+      await partnerPortalApi.changePassword({
+        current_password: formData.currentPassword,
+        password: formData.newPassword,
+        password_confirmation: formData.confirmPassword,
+      })
+      toast.success("Password changed successfully")
+      setFormData({ currentPassword: "", newPassword: "", confirmPassword: "" })
+    } catch (err: any) {
+      const message =
+        err?.errors?.current_password?.[0] ?? err?.message ?? "Failed to change password"
+      toast.error(message)
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (

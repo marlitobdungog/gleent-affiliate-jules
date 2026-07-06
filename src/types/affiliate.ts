@@ -18,7 +18,7 @@ export type PayoutStatus =
 
 export type PartnerType = "Agency" | "Consultant" | "Reseller" | "Influencer"
 
-export type PartnerStatus = "Active" | "Suspended" | "Pending" | "Inactive"
+export type PartnerStatus = "Active" | "Approved" | "Suspended" | "Rejected" | "Pending" | "Inactive"
 
 export type ReferralStatus =
   | "New"
@@ -40,6 +40,7 @@ export type CommissionStatus =
   | "For Payout"
   | "Paid"
   | "Rejected"
+  | "Cancelled"
 
 export type ActivityAction =
   | "Partner approved"

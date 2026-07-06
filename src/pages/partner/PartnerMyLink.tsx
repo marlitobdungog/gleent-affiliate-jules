@@ -1,24 +1,53 @@
-import { useState } from "react"
-import { Copy, Check, Link2, ExternalLink } from "lucide-react"
+import { useEffect, useState } from "react"
+import { Copy, Check, Link2, ExternalLink, Loader2 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { mockPartnerProfile } from "@/data/mockPartnerPortalData"
+import { partnerPortalApi } from "@/services/api"
+import type { PartnerProfile } from "@/types/partnerPortal"
 import { toast } from "sonner"
 
 export function PartnerMyLink() {
+  const [profile, setProfile] = useState<PartnerProfile | null>(null)
+  const [loading, setLoading] = useState(true)
   const [copied, setCopied] = useState(false)
 
+  useEffect(() => {
+    partnerPortalApi
+      .getProfile()
+      .then(setProfile)
+      .catch(console.error)
+      .finally(() => setLoading(false))
+  }, [])
+
   const handleCopy = async () => {
+    if (!profile?.partner_link) return
+
     try {
-      await navigator.clipboard.writeText(mockPartnerProfile.partnerLink)
+      await navigator.clipboard.writeText(profile.partner_link)
       setCopied(true)
       toast.success("Affiliate link copied to clipboard")
       setTimeout(() => setCopied(false), 2000)
     } catch {
       toast.error("Failed to copy link")
     }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center p-12">
+        <Loader2 className="size-8 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
+  if (!profile) {
+    return (
+      <div className="p-6">
+        <p className="text-muted-foreground">Unable to load affiliate link.</p>
+      </div>
+    )
   }
 
   return (
@@ -47,7 +76,7 @@ export function PartnerMyLink() {
             <Input
               id="partner-code"
               readOnly
-              value={mockPartnerProfile.partnerCode}
+              value={profile.partner_code}
               className="font-mono bg-muted/50"
             />
           </div>
@@ -58,7 +87,7 @@ export function PartnerMyLink() {
               <Input
                 id="partner-link"
                 readOnly
-                value={mockPartnerProfile.partnerLink}
+                value={profile.partner_link}
                 className="font-mono bg-muted/50"
               />
               <Button onClick={handleCopy} variant="outline" className="shrink-0">
@@ -69,7 +98,7 @@ export function PartnerMyLink() {
           </div>
 
           <Button variant="outline" asChild>
-            <a href={mockPartnerProfile.partnerLink} target="_blank" rel="noopener noreferrer">
+            <a href={profile.partner_link} target="_blank" rel="noopener noreferrer">
               <ExternalLink className="size-4 mr-2" />
               Preview Link
             </a>
