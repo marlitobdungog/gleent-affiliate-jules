@@ -11,8 +11,9 @@ import * as React from "react"
 
 export function PartnerRegister() {
   const navigate = useNavigate()
-  const { login, user } = useAuth()
+  const { user } = useAuth()
   const [loading, setLoading] = useState(false)
+  const [submitted, setSubmitted] = useState(false)
 
   React.useEffect(() => {
     if (user?.role === "partner") {
@@ -28,8 +29,6 @@ export function PartnerRegister() {
     email: "",
     company_name: "",
     phone: "",
-    password: "",
-    password_confirmation: "",
   })
 
   const handleRegister = async (e: React.FormEvent) => {
@@ -37,14 +36,36 @@ export function PartnerRegister() {
     setLoading(true)
     setError(null)
     try {
-      const response = await partnerAuthApi.register(formData)
-      login(response.user)
-      navigate("/partner/dashboard")
+      await partnerAuthApi.register(formData)
+      setSubmitted(true)
     } catch (err: any) {
-      setError(err.message || "Failed to register")
+      setError(err.message || "Failed to submit application")
     } finally {
       setLoading(false)
     }
+  }
+
+  if (submitted) {
+    return (
+      <div className="flex min-h-svh flex-col items-center justify-center bg-muted/40 p-6 md:p-10">
+        <div className="flex w-full max-w-sm flex-col gap-6">
+          <Card className="shadow-none">
+            <CardHeader>
+              <CardTitle className="text-xl">Application submitted</CardTitle>
+              <CardDescription>
+                Thank you for applying to the Gleent Affiliate program. We will review your
+                application and email you when a decision is made.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button asChild className="w-full">
+                <Link to="/partner/login">Back to login</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -61,9 +82,10 @@ export function PartnerRegister() {
         </div>
         <Card className="shadow-none">
           <CardHeader>
-            <CardTitle className="text-xl">Join the program</CardTitle>
+            <CardTitle className="text-xl">Apply to the program</CardTitle>
             <CardDescription>
-              Create your partner account to start earning commissions.
+              Submit your application to become an affiliate partner. Portal access is granted
+              after approval.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -115,29 +137,9 @@ export function PartnerRegister() {
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                 />
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="password_confirmation">Confirm Password</Label>
-                <Input
-                  id="password_confirmation"
-                  type="password"
-                  value={formData.password_confirmation}
-                  onChange={(e) => setFormData({ ...formData, password_confirmation: e.target.value })}
-                  required
-                />
-              </div>
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading && <Loader2 className="size-4 animate-spin mr-2" />}
-                Register
+                Submit application
               </Button>
             </form>
             <div className="mt-4 text-center text-sm">
