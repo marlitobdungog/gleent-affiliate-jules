@@ -1,4 +1,8 @@
-const API_BASE_URL = '/api';
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '');
+
+function backendUrl(path: string) {
+  return `${API_BASE_URL}${path}`;
+}
 
 function getCookie(name: string) {
   const value = `; ${document.cookie}`;
@@ -82,26 +86,26 @@ const getHeaders = () => {
 
 export const api = {
   get: (url: string) =>
-    fetch(`${API_BASE_URL}${url}`, {
+    fetch(backendUrl(`/api${url}`), {
         headers: getHeaders(),
         credentials: 'include'
     }).then(handleResponse),
   post: (url: string, data: any) =>
-    fetch(`${API_BASE_URL}${url}`, {
+    fetch(backendUrl(`/api${url}`), {
       method: 'POST',
       headers: getHeaders(),
       body: JSON.stringify(data),
       credentials: 'include'
     }).then(handleResponse),
   put: (url: string, data: any) =>
-    fetch(`${API_BASE_URL}${url}`, {
+    fetch(backendUrl(`/api${url}`), {
       method: 'PUT',
       headers: getHeaders(),
       body: JSON.stringify(data),
       credentials: 'include'
     }).then(handleResponse),
   delete: (url: string) =>
-    fetch(`${API_BASE_URL}${url}`, {
+    fetch(backendUrl(`/api${url}`), {
       method: 'DELETE',
       headers: getHeaders(),
       credentials: 'include'
@@ -185,7 +189,7 @@ export const dashboardApi = {
 };
 
 export const authApi = {
-  getCsrfCookie: () => fetch('/sanctum/csrf-cookie', { credentials: 'include' }),
+  getCsrfCookie: () => fetch(backendUrl('/sanctum/csrf-cookie'), { credentials: 'include' }),
   register: async (data: any) => {
     await authApi.getCsrfCookie();
     return api.post('/register', data);
@@ -237,6 +241,6 @@ export const partnerPortalApi = {
   getProducts: () => api.get('/partner/products'),
   getMarketingAssets: () => api.get('/partner/marketing-assets'),
   downloadMarketingAsset: (assetId: string) => {
-    window.open(`/api/partner/marketing-assets/${assetId}/download`, '_blank');
+    window.open(backendUrl(`/api/partner/marketing-assets/${assetId}/download`), '_blank');
   },
 };
