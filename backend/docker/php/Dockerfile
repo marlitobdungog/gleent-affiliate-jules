@@ -17,9 +17,14 @@ RUN apt-get update \
 
 COPY --from=composer:2 /usr/bin/composer /usr/local/bin/composer
 COPY . .
+RUN rm -f .env
 
 RUN composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader \
-    && mkdir -p storage bootstrap/cache database \
+    && mkdir -p storage/framework/cache/data \
+        storage/framework/sessions \
+        storage/framework/views \
+        bootstrap/cache \
+        database \
     && chown -R www-data:www-data /var/www
 
 EXPOSE 9000

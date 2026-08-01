@@ -26,6 +26,8 @@ ZONE="${GCP_ZONE:-${ZONE:-}}"
 REPOSITORY="${GCP_ARTIFACT_REPOSITORY:-${REPO:-docker-repo}}"
 BACKEND_SERVICE="${GCP_BACKEND_SERVICE:-${BACKEND_SERVICE:-gleent-affiliate-backend}}"
 FRONTEND_SERVICE="${GCP_FRONTEND_SERVICE:-${FRONTEND_SERVICE:-gleent-affiliate-frontend}}"
+SERVICE_ACCOUNT="cloud-run@${PROJECT_ID}.iam.gserviceaccount.com"
+FRONTEND_ORIGIN="${FRONTEND_ORIGIN:-https://gleent-affiliate-frontend-1083135128051.asia-southeast1.run.app}"
 APP_KEY="${APP_KEY:-}"
 DB_HOST="${DB_HOST:-10.148.0.27}"
 DB_PORT="${DB_PORT:-3310}"
@@ -33,6 +35,8 @@ DB_DATABASE="${DB_DATABASE:-}"
 DB_USERNAME="${DB_USERNAME:-}"
 DB_PASSWORD="${DB_PASSWORD:-}"
 APP_URL="${APP_URL:-http://localhost}"
+FRONTEND_HOST="${FRONTEND_ORIGIN#http://}"
+FRONTEND_HOST="${FRONTEND_HOST#https://}"
 
 if [[ -z "$APP_KEY" && -f backend/.env ]]; then
   APP_KEY="$(grep -E '^APP_KEY=' backend/.env | head -n 1 | cut -d= -f2-)"
@@ -72,8 +76,8 @@ DB_PASSWORD=$DB_PASSWORD
 SESSION_DRIVER=database
 SESSION_SECURE_COOKIE=true
 SESSION_SAME_SITE=lax
-SANCTUM_STATEFUL_DOMAINS=localhost,localhost:5173,localhost:8089,127.0.0.1,127.0.0.1:5173,127.0.0.1:8089,*.a.run.app
-CORS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:8089
+SANCTUM_STATEFUL_DOMAINS=${FRONTEND_HOST},localhost,localhost:5173,localhost:8089,127.0.0.1,127.0.0.1:5173,127.0.0.1:8089
+CORS_ALLOWED_ORIGINS=${FRONTEND_ORIGIN},http://localhost:5173,http://localhost:8089
 CORS_ALLOWED_ORIGINS_PATTERNS=#^https://.*\\.a\\.run\\.app$#,#^http://localhost(:\\d+)?$#
 LOG_LEVEL=info
 EOF
@@ -81,13 +85,18 @@ EOF
 > "$BACKEND_ENV_YAML"
 while IFS='=' read -r key value; do
   [[ -z "$key" ]] && continue
-  value_escaped="${value//\"/\\\"}"
+  value_escaped="${value//\\/\\\\}"
+  value_escaped="${value_escaped//\"/\\\"}"
   echo "${key}: \"${value_escaped}\"" >> "$BACKEND_ENV_YAML"
 done < "$BACKEND_ENV_FILE"
 
-echo "Building backend image..."
-docker build --platform=linux/amd64 -f backend/docker/php/Dockerfile -t "$BACKEND_IMAGE" backend
-docker push "$BACKEND_IMAGE"
+echo "Building and pushing backend image..."
+docker buildx build \
+  --platform linux/amd64 \
+  -f backend/docker/php/Dockerfile \
+  -t "$BACKEND_IMAGE" \
+  --push \
+  backend
 
 echo "Deploying backend service..."
 gcloud run deploy "$BACKEND_SERVICE" \
@@ -99,6 +108,9 @@ gcloud run deploy "$BACKEND_SERVICE" \
   --port=8080 \
   --cpu=1 \
   --memory=512Mi \
+  --service-account="$SERVICE_ACCOUNT" \
+  --vpc-connector=default-run-connector \
+  --vpc-egress=all-traffic \
   --command=php \
   --args=artisan,serve,--host=0.0.0.0,--port=8080 \
   --env-vars-file="$BACKEND_ENV_YAML" >/dev/null
@@ -114,31 +126,60 @@ gcloud run services update "$BACKEND_SERVICE" \
   --region "$REGION" \
   --update-env-vars "APP_URL=${BACKEND_URL}" >/dev/null
 
-echo "Running database migrations..."
-docker run --rm \
-  --platform=linux/amd64 \
-  -e APP_ENV=production \
-  -e APP_DEBUG=false \
-  -e APP_URL="$BACKEND_URL" \
-  -e APP_KEY="$APP_KEY" \
-  -e DB_CONNECTION=mysql \
-  -e DB_HOST="$DB_HOST" \
-  -e DB_PORT="$DB_PORT" \
-  -e DB_DATABASE="$DB_DATABASE" \
-  -e DB_USERNAME="$DB_USERNAME" \
-  -e DB_PASSWORD="$DB_PASSWORD" \
-  -e SESSION_DRIVER=database \
-  -e SESSION_SECURE_COOKIE=true \
-  -e SESSION_SAME_SITE=lax \
-  "$BACKEND_IMAGE" php artisan migrate --force --no-interaction
+MIGRATION_ENV_FILE="$(mktemp "${TMPDIR:-/tmp}/gleent-affiliate-migrate-env.XXXXXX")"
+MIGRATION_ENV_YAML="$(mktemp "${TMPDIR:-/tmp}/gleent-affiliate-migrate-env-yaml.XXXXXX")"
+trap 'rm -f "$BACKEND_ENV_FILE" "$BACKEND_ENV_YAML" "$MIGRATION_ENV_FILE" "$MIGRATION_ENV_YAML"' EXIT
 
-echo "Building frontend image with API base $BACKEND_URL..."
-docker build \
-  --platform=linux/amd64 \
+cat > "$MIGRATION_ENV_FILE" <<EOF
+APP_ENV=production
+APP_DEBUG=false
+APP_URL=$BACKEND_URL
+APP_KEY=$APP_KEY
+DB_CONNECTION=mysql
+DB_HOST=$DB_HOST
+DB_PORT=$DB_PORT
+DB_DATABASE=$DB_DATABASE
+DB_USERNAME=$DB_USERNAME
+DB_PASSWORD=$DB_PASSWORD
+SESSION_DRIVER=database
+SESSION_SECURE_COOKIE=true
+SESSION_SAME_SITE=lax
+EOF
+
+> "$MIGRATION_ENV_YAML"
+while IFS='=' read -r key value; do
+  [[ -z "$key" ]] && continue
+  value_escaped="${value//\\/\\\\}"
+  value_escaped="${value_escaped//\"/\\\"}"
+  echo "${key}: \"${value_escaped}\"" >> "$MIGRATION_ENV_YAML"
+done < "$MIGRATION_ENV_FILE"
+
+echo "Running database migrations in Cloud Run..."
+gcloud run jobs deploy "${BACKEND_SERVICE}-migrate" \
+  --project "$PROJECT_ID" \
+  --region "$REGION" \
+  --image "$BACKEND_IMAGE" \
+  --service-account="$SERVICE_ACCOUNT" \
+  --vpc-connector=default-run-connector \
+  --vpc-egress=all-traffic \
+  --cpu=1 \
+  --memory=512Mi \
+  --tasks=1 \
+  --max-retries=0 \
+  --command=sh \
+  --args=-lc,'i=0; until MYSQL_PWD="$DB_PASSWORD" mysqladmin ping -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USERNAME" --silent; do i=$((i + 1)); if [ "$i" -ge 12 ]; then echo "Database not reachable at $DB_HOST:$DB_PORT after $i attempts." >&2; exit 1; fi; echo "Waiting for database at $DB_HOST:$DB_PORT ($i/12)..."; sleep 5; done; php artisan migrate --force --no-interaction' \
+  --env-vars-file="$MIGRATION_ENV_YAML" \
+  --execute-now \
+  --wait >/dev/null
+
+echo "Building and pushing frontend image with API base $BACKEND_URL..."
+docker buildx build \
+  --platform linux/amd64 \
   --build-arg VITE_API_BASE_URL="$BACKEND_URL" \
   -f docker/frontend/Dockerfile \
-  -t "$FRONTEND_IMAGE" .
-docker push "$FRONTEND_IMAGE"
+  -t "$FRONTEND_IMAGE" \
+  --push \
+  .
 
 echo "Deploying frontend service..."
 gcloud run deploy "$FRONTEND_SERVICE" \
@@ -149,7 +190,10 @@ gcloud run deploy "$FRONTEND_SERVICE" \
   --image "$FRONTEND_IMAGE" \
   --port=80 \
   --cpu=1 \
-  --memory=512Mi >/dev/null
+  --memory=512Mi \
+  --service-account="$SERVICE_ACCOUNT" \
+  --vpc-connector=default-run-connector \
+  --vpc-egress=all-traffic >/dev/null
 
 FRONTEND_URL="$(gcloud run services describe "$FRONTEND_SERVICE" \
   --project "$PROJECT_ID" \

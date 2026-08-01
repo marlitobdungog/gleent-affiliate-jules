@@ -8,7 +8,7 @@ return [
 
     'allowed_origins' => array_values(array_filter(array_map('trim', explode(',', env(
         'CORS_ALLOWED_ORIGINS',
-        'http://localhost:5173,http://localhost:8089'
+        'https://gleent-affiliate-frontend-1083135128051.asia-southeast1.run.app,http://localhost:5173,http://localhost:8089'
     ))))),
 
     'allowed_origins_patterns' => array_values(array_filter(array_map('trim', explode(',', env(
