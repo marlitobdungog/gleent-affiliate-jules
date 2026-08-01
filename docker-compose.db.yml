@@ -1,0 +1,31 @@
+services:
+  gleent-affiliate-db:
+    image: mysql:8.4
+    container_name: gleent-affiliate-db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-gleent_affiliate}
+      MYSQL_USER: ${MYSQL_USER:-gleent_affiliate}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-gleent_affiliate}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"
+    volumes:
+      - gleent-affiliate-db-data:/var/lib/mysql
+    command:
+      - --default-authentication-plugin=mysql_native_password
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "mysqladmin ping -h 127.0.0.1 -uroot -p${MYSQL_ROOT_PASSWORD:-root} --silent",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  gleent-affiliate-db-data:
+
