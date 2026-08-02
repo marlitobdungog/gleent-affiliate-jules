@@ -103,6 +103,12 @@ class AuthController extends Controller
     {
         $user = $request->user();
 
+        if (! $user) {
+            return response()->json([
+                'message' => 'Unauthenticated.',
+            ], 401);
+        }
+
         if ($user->isPartner()) {
             $user->load('partner');
         }

@@ -1,5 +1,7 @@
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '');
 
+let csrfTokenPromise: Promise<void> | null = null;
+
 function backendUrl(path: string) {
   return `${API_BASE_URL}${path}`;
 }
@@ -9,6 +11,36 @@ function getCookie(name: string) {
   const parts = value.split(`; ${name}=`);
   if (parts.length === 2) return parts.pop()?.split(';').shift();
   return null;
+}
+
+async function ensureCsrfToken() {
+  // Check if CSRF token already exists
+  if (getCookie('XSRF-TOKEN')) {
+    return;
+  }
+
+  // If we're already fetching, wait for that
+  if (csrfTokenPromise) {
+    return csrfTokenPromise;
+  }
+
+  // Fetch the CSRF token
+  csrfTokenPromise = (async () => {
+    try {
+      await fetch(backendUrl('/sanctum/csrf-cookie'), { 
+        credentials: 'include',
+        mode: 'cors',
+      });
+      // Wait a bit to ensure the cookie is set
+      await new Promise(resolve => setTimeout(resolve, 50));
+    } catch (err) {
+      console.warn('Failed to fetch CSRF cookie:', err);
+    } finally {
+      csrfTokenPromise = null;
+    }
+  })();
+
+  return csrfTokenPromise;
 }
 
 async function parseResponseBody(response: Response) {
@@ -90,26 +122,32 @@ export const api = {
         headers: getHeaders(),
         credentials: 'include'
     }).then(handleResponse),
-  post: (url: string, data: any) =>
-    fetch(backendUrl(`/api${url}`), {
+  post: async (url: string, data: any) => {
+    await ensureCsrfToken();
+    return fetch(backendUrl(`/api${url}`), {
       method: 'POST',
       headers: getHeaders(),
       body: JSON.stringify(data),
       credentials: 'include'
-    }).then(handleResponse),
-  put: (url: string, data: any) =>
-    fetch(backendUrl(`/api${url}`), {
+    }).then(handleResponse);
+  },
+  put: async (url: string, data: any) => {
+    await ensureCsrfToken();
+    return fetch(backendUrl(`/api${url}`), {
       method: 'PUT',
       headers: getHeaders(),
       body: JSON.stringify(data),
       credentials: 'include'
-    }).then(handleResponse),
-  delete: (url: string) =>
-    fetch(backendUrl(`/api${url}`), {
+    }).then(handleResponse);
+  },
+  delete: async (url: string) => {
+    await ensureCsrfToken();
+    return fetch(backendUrl(`/api${url}`), {
       method: 'DELETE',
       headers: getHeaders(),
       credentials: 'include'
-    }).then(handleResponse),
+    }).then(handleResponse);
+  },
 };
 
 export const productsApi = {
@@ -189,7 +227,19 @@ export const dashboardApi = {
 };
 
 export const authApi = {
-  getCsrfCookie: () => fetch(backendUrl('/sanctum/csrf-cookie'), { credentials: 'include' }),
+  getCsrfCookie: async () => {
+    try {
+      const response = await fetch(backendUrl('/sanctum/csrf-cookie'), { 
+        credentials: 'include',
+        mode: 'cors',
+      });
+      return response;
+    } catch (err) {
+      // If CSRF fetch fails, continue anyway - token may already be set
+      console.warn('Failed to fetch CSRF cookie:', err);
+      return null;
+    }
+  },
   register: async (data: any) => {
     await authApi.getCsrfCookie();
     return api.post('/register', data);

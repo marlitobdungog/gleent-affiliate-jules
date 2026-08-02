@@ -24,6 +24,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     const initAuth = async () => {
       try {
+        // Fetch CSRF token first to ensure it's available for all subsequent API calls
+        await authApi.getCsrfCookie()
+        
         const currentUser = await authApi.me()
         setUser(currentUser)
       } catch (err) {

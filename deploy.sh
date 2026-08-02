@@ -27,7 +27,6 @@ REPOSITORY="${GCP_ARTIFACT_REPOSITORY:-${REPO:-docker-repo}}"
 BACKEND_SERVICE="${GCP_BACKEND_SERVICE:-${BACKEND_SERVICE:-gleent-affiliate-backend}}"
 FRONTEND_SERVICE="${GCP_FRONTEND_SERVICE:-${FRONTEND_SERVICE:-gleent-affiliate-frontend}}"
 SERVICE_ACCOUNT="cloud-run@${PROJECT_ID}.iam.gserviceaccount.com"
-FRONTEND_ORIGIN="${FRONTEND_ORIGIN:-https://gleent-affiliate-frontend-1083135128051.asia-southeast1.run.app}"
 APP_KEY="${APP_KEY:-}"
 DB_HOST="${DB_HOST:-10.148.0.27}"
 DB_PORT="${DB_PORT:-3310}"
@@ -35,6 +34,8 @@ DB_DATABASE="${DB_DATABASE:-}"
 DB_USERNAME="${DB_USERNAME:-}"
 DB_PASSWORD="${DB_PASSWORD:-}"
 APP_URL="${APP_URL:-http://localhost}"
+FRONTEND_ORIGIN="${FRONTEND_ORIGIN:-https://gleent-affiliate-frontend-1083135128051.asia-southeast1.run.app}"
+ALT_FRONTEND_ORIGIN="${ALT_FRONTEND_ORIGIN:-https://gleent-affiliate-frontend-lijnomv2zq-as.a.run.app}"
 FRONTEND_HOST="${FRONTEND_ORIGIN#http://}"
 FRONTEND_HOST="${FRONTEND_HOST#https://}"
 
@@ -75,9 +76,9 @@ DB_USERNAME=$DB_USERNAME
 DB_PASSWORD=$DB_PASSWORD
 SESSION_DRIVER=database
 SESSION_SECURE_COOKIE=true
-SESSION_SAME_SITE=lax
-SANCTUM_STATEFUL_DOMAINS=${FRONTEND_HOST},localhost,localhost:5173,localhost:8089,127.0.0.1,127.0.0.1:5173,127.0.0.1:8089
-CORS_ALLOWED_ORIGINS=${FRONTEND_ORIGIN},http://localhost:5173,http://localhost:8089
+SESSION_SAME_SITE=none
+SANCTUM_STATEFUL_DOMAINS=${FRONTEND_HOST},gleent-affiliate-frontend-lijnomv2zq-as.a.run.app,localhost,localhost:5173,localhost:8089,127.0.0.1,127.0.0.1:5173,127.0.0.1:8089
+CORS_ALLOWED_ORIGINS=${FRONTEND_ORIGIN},${ALT_FRONTEND_ORIGIN},http://localhost:5173,http://localhost:8089
 CORS_ALLOWED_ORIGINS_PATTERNS=#^https://.*\\.a\\.run\\.app$#,#^http://localhost(:\\d+)?$#
 LOG_LEVEL=info
 EOF
@@ -120,11 +121,37 @@ BACKEND_URL="$(gcloud run services describe "$BACKEND_SERVICE" \
   --region "$REGION" \
   --format='value(status.url)')"
 
-echo "Updating backend APP_URL to $BACKEND_URL..."
+# Normalize to numeric format for consistency
+if [[ "$BACKEND_URL" == *".a.run.app" ]]; then
+  BACKEND_URL="https://gleent-affiliate-backend-1083135128051.${REGION}.run.app"
+fi
+
+echo "Backend URL: $BACKEND_URL"
+cat > "$BACKEND_ENV_YAML" <<'EOF'
+APP_URL: "$BACKEND_URL"
+APP_ENV: "production"
+APP_DEBUG: "false"
+APP_KEY: "$APP_KEY"
+DB_CONNECTION: "mysql"
+DB_HOST: "$DB_HOST"
+DB_PORT: "$DB_PORT"
+DB_DATABASE: "$DB_DATABASE"
+DB_USERNAME: "$DB_USERNAME"
+DB_PASSWORD: "$DB_PASSWORD"
+SESSION_DRIVER: "database"
+SESSION_SECURE_COOKIE: "true"
+SESSION_SAME_SITE: "none"
+SANCTUM_STATEFUL_DOMAINS: "gleent-affiliate-frontend-1083135128051.asia-southeast1.run.app,gleent-affiliate-frontend-lijnomv2zq-as.a.run.app,localhost,localhost:5173,localhost:8089,127.0.0.1,127.0.0.1:5173,127.0.0.1:8089"
+CORS_ALLOWED_ORIGINS: "https://gleent-affiliate-frontend-1083135128051.asia-southeast1.run.app,https://gleent-affiliate-frontend-lijnomv2zq-as.a.run.app,http://localhost:5173,http://localhost:8089"
+CORS_ALLOWED_ORIGINS_PATTERNS: "#^https://.*\\.a\\.run\\.app$#,#^http://localhost(:\\d+)?$#"
+LOG_LEVEL: "info"
+EOF
+sed -i.bak 's|\$BACKEND_URL|'"$BACKEND_URL"'|g; s|\$APP_KEY|'"${APP_KEY//|\\|}"'|g; s|\$DB_HOST|'"$DB_HOST"'|g; s|\$DB_PORT|'"$DB_PORT"'|g; s|\$DB_DATABASE|'"$DB_DATABASE"'|g; s|\$DB_USERNAME|'"$DB_USERNAME"'|g; s|\$DB_PASSWORD|'"${DB_PASSWORD//|\\|}"'|g' "$BACKEND_ENV_YAML"
+rm -f "$BACKEND_ENV_YAML.bak"
 gcloud run services update "$BACKEND_SERVICE" \
   --project "$PROJECT_ID" \
   --region "$REGION" \
-  --update-env-vars "APP_URL=${BACKEND_URL}" >/dev/null
+  --env-vars-file="$BACKEND_ENV_YAML" >/dev/null
 
 MIGRATION_ENV_FILE="$(mktemp "${TMPDIR:-/tmp}/gleent-affiliate-migrate-env.XXXXXX")"
 MIGRATION_ENV_YAML="$(mktemp "${TMPDIR:-/tmp}/gleent-affiliate-migrate-env-yaml.XXXXXX")"
@@ -143,7 +170,7 @@ DB_USERNAME=$DB_USERNAME
 DB_PASSWORD=$DB_PASSWORD
 SESSION_DRIVER=database
 SESSION_SECURE_COOKIE=true
-SESSION_SAME_SITE=lax
+SESSION_SAME_SITE=none
 EOF
 
 > "$MIGRATION_ENV_YAML"
