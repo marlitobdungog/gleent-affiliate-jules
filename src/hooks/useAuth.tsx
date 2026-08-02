@@ -23,14 +23,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   React.useEffect(() => {
     const initAuth = async () => {
+      const isPublicAuthPage = ["/admin/login", "/admin/register", "/partner/login", "/partner/register"]
+        .includes(window.location.pathname)
+
+      if (isPublicAuthPage && !localStorage.getItem("auth_user")) {
+        setIsLoading(false)
+        return
+      }
+
       try {
-        // Fetch CSRF token first to ensure it's available for all subsequent API calls
-        await authApi.getCsrfCookie()
-        
         const currentUser = await authApi.me()
         setUser(currentUser)
       } catch (err) {
         console.error("Not authenticated")
+        setUser(null)
         localStorage.removeItem("auth_user")
       } finally {
         setIsLoading(false)

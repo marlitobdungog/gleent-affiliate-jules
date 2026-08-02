@@ -19,6 +19,8 @@ This workspace now includes a Laravel backend in [backend](backend) and a Docker
 - http://localhost:8089/api/* -> Laravel backend
 - http://localhost:8089/up -> Laravel health route
 
+Cloud Run deployment keeps the frontend and backend in separate services while proxying `/api/*` and `/sanctum/*` through the frontend origin. See [docs/cloud-run-frontend-backend-proxy.md](docs/cloud-run-frontend-backend-proxy.md) for the production topology and deployment details.
+
 ### Start backend stack
 
 ```bash

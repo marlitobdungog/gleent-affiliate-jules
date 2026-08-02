@@ -82,8 +82,12 @@ function toErrorMessage(body: unknown, fallback: string) {
   return fallback;
 }
 
-async function handleResponse(response: Response) {
-  if (response.status === 401) {
+type ResponseOptions = {
+  redirectOnUnauthorized?: boolean;
+};
+
+async function handleResponse(response: Response, options: ResponseOptions = {}) {
+  if (response.status === 401 && options.redirectOnUnauthorized !== false) {
     localStorage.removeItem("auth_user");
     const path = window.location.pathname;
     if (!path.includes("/login") && !path.includes("/register")) {
@@ -117,11 +121,11 @@ const getHeaders = () => {
 };
 
 export const api = {
-  get: (url: string) =>
+  get: (url: string, options: ResponseOptions = {}) =>
     fetch(backendUrl(`/api${url}`), {
         headers: getHeaders(),
         credentials: 'include'
-    }).then(handleResponse),
+    }).then(response => handleResponse(response, options)),
   post: async (url: string, data: any) => {
     await ensureCsrfToken();
     return fetch(backendUrl(`/api${url}`), {
@@ -249,7 +253,7 @@ export const authApi = {
     return api.post('/login', data);
   },
   logout: () => api.post('/logout', {}),
-  me: () => api.get('/me'),
+  me: () => api.get('/me', { redirectOnUnauthorized: false }),
 };
 
 export const partnerAuthApi = {
