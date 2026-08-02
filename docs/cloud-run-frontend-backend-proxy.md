@@ -58,20 +58,58 @@ CSRF validation must remain enabled. Disabling it is not a valid workaround.
 
 The proxy is defined in [docker/frontend/default.conf](../docker/frontend/default.conf).
 
-These paths are proxied to the backend:
+Nginx serves the React build and proxies only backend-bound paths:
 
-```text
-/api/*
-/sanctum/*
+```nginx
+location ^~ /api/ {
+    proxy_pass __BACKEND_URL__;
+    proxy_http_version 1.1;
+    proxy_ssl_server_name on;
+    proxy_set_header Host $proxy_host;
+    proxy_set_header X-Forwarded-Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
+
+location ^~ /sanctum/ {
+    proxy_pass __BACKEND_URL__;
+    proxy_http_version 1.1;
+    proxy_ssl_server_name on;
+    proxy_set_header Host $proxy_host;
+    proxy_set_header X-Forwarded-Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
+
+location / {
+    try_files $uri $uri/ /index.html;
+}
 ```
 
-All other paths are handled by the React SPA fallback:
+`^~` ensures `/api/` and `/sanctum/` are handled by the proxy rather than the SPA fallback. Nginx forwards the incoming `Cookie` header to Laravel and preserves Laravel's `Set-Cookie` response headers by default.
 
-```text
-/ -> /index.html
+`Host` must be `$proxy_host`, which is the backend Cloud Run hostname. Cloud Run uses this host to route the request to the backend service. `X-Forwarded-Host` retains the public frontend hostname so Laravel can understand the browser-facing request.
+
+### Build-time backend target
+
+The frontend image is built by [docker/frontend/Dockerfile](../docker/frontend/Dockerfile). It keeps two distinct build arguments:
+
+```dockerfile
+ARG VITE_API_BASE_URL=
+ARG BACKEND_URL=http://localhost:8000
+
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+
+COPY docker/frontend/default.conf /etc/nginx/conf.d/default.conf
+RUN sed -i "s|__BACKEND_URL__|${BACKEND_URL}|g" /etc/nginx/conf.d/default.conf
 ```
 
-The backend URL is injected into the Nginx configuration using the `__BACKEND_URL__` placeholder during the frontend image build.
+- `VITE_API_BASE_URL` is compiled into browser JavaScript and **must be empty in production**.
+- `BACKEND_URL` is used only inside the Nginx image to replace `__BACKEND_URL__`; it is not exposed to browser JavaScript.
+
+This separation is essential: the browser sees relative paths, while Nginx knows the backend Cloud Run URL.
 
 The proxy sends:
 
@@ -100,6 +138,26 @@ This causes API calls to use relative URLs:
 ```
 
 The browser sends both requests to the frontend origin, and Nginx forwards them to Laravel.
+
+Every API request uses `credentials: 'include'`, so the Laravel HTTP-only session cookie is sent with the relative `/api/*` request. Before `POST`, `PUT`, and `DELETE` requests, the client obtains `/sanctum/csrf-cookie` if necessary, reads the frontend-origin `XSRF-TOKEN` cookie, and sends it as `X-XSRF-TOKEN`.
+
+Do not set `VITE_API_BASE_URL` to the backend Cloud Run URL in a production build. Doing so bypasses Nginx and reintroduces browser cookie/CSRF origin problems.
+
+## Laravel Session Middleware
+
+The API routes in [backend/routes/api.php](../backend/routes/api.php) deliberately use the `web` middleware:
+
+```php
+Route::middleware('web')->group(function () {
+    Route::get('/me', [AuthController::class, 'me'])->middleware('auth');
+    Route::apiResource('products', ProductController::class)->middleware('auth');
+    // Other authenticated API routes...
+});
+```
+
+This gives all proxied API requests one consistent Laravel session and CSRF middleware stack. Because the frontend proxy makes requests same-origin, do **not** also call `$middleware->statefulApi()` in [backend/bootstrap/app.php](../backend/bootstrap/app.php). Combining it with the explicit `web` route middleware starts the session twice, which can produce competing session cookies and cause a user to be redirected to login after navigating between pages.
+
+Keep the existing CSRF exclusions narrowly limited to authentication endpoints that intentionally handle login/registration. Protected state-changing API requests must continue through the `web` CSRF middleware.
 
 ## Deployment Flow
 
@@ -131,13 +189,14 @@ The frontend Dockerfile uses `BACKEND_URL` only to render the Nginx proxy config
 The backend deployment must include:
 
 - `SESSION_SECURE_COOKIE=true`
-- `SESSION_SAME_SITE=none` when the deployment uses cross-site browser contexts
-- The frontend hostname in `SANCTUM_STATEFUL_DOMAINS`
-- The frontend origin in `CORS_ALLOWED_ORIGINS`
+- `SESSION_SAME_SITE=none` if the application is also embedded or accessed in a cross-site context
+- A persistent session driver, such as the deployed `SESSION_DRIVER=database`
 
 The backend service can remain a separate Cloud Run service. It does not need to be merged into the frontend image.
 
 Do not commit production credentials, `APP_KEY`, database passwords, or generated environment files.
+
+`SANCTUM_STATEFUL_DOMAINS` and `CORS_ALLOWED_ORIGINS` may remain configured for direct local development or other approved cross-origin clients, but they are not what makes the production frontend proxy work. The production browser flow is same-origin.
 
 ## Local Development
 
@@ -191,6 +250,17 @@ Using the frontend host as the upstream `Host` header can cause Cloud Run's back
 
 Verify that the `/api/` and `/sanctum/` locations appear before the catch-all `/` location in [docker/frontend/default.conf](../docker/frontend/default.conf).
 
+### Login succeeds but navigating to a menu redirects to login
+
+Check that:
+
+1. [backend/routes/api.php](../backend/routes/api.php) applies `web` middleware to the session-authenticated API routes.
+2. [backend/bootstrap/app.php](../backend/bootstrap/app.php) does not also call `$middleware->statefulApi()`.
+3. The browser requests `/api/me` and `/api/products` through the frontend hostname.
+4. Each request returns `200`, and the `laravel-session` cookie remains present for the frontend origin.
+
+The application must use exactly one session middleware stack for each proxied API request.
+
 ### Backend changes are not reflected
 
 The frontend image contains a build-time Nginx proxy target. After changing the backend Cloud Run URL or proxy configuration, rebuild and redeploy the frontend image.
@@ -202,6 +272,8 @@ After deployment:
 - Login succeeds.
 - `GET /sanctum/csrf-cookie` returns `204`.
 - `GET /api/me` returns the authenticated user.
+- Navigate from Dashboard to Products without a redirect to login.
+- Reload `/admin/products` and confirm the authenticated session persists.
 - Product creation succeeds.
 - Product update and deletion succeed.
 - Requests use the frontend hostname in the browser.

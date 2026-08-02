@@ -8,6 +8,7 @@ use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -48,12 +49,10 @@ class ApplicationService
         return DB::transaction(function () use ($application) {
             $application->update(['status' => 'approved']);
 
-            $temporaryPassword = Str::password(12);
-
             $user = User::create([
                 'name' => $application->name,
                 'email' => $application->email,
-                'password' => Hash::make($temporaryPassword),
+                'password' => Hash::make(Str::random(64)),
                 'role' => 'partner',
             ]);
 
@@ -75,12 +74,34 @@ class ApplicationService
 
             return [
                 'partner' => $partner,
-                'login_credentials' => [
-                    'email' => $application->email,
-                    'password' => $temporaryPassword,
-                ],
+                'activation_link' => $this->createActivationLink($user),
             ];
         });
+    }
+
+    public function createActivationLink(User $user): string
+    {
+        $token = Password::createToken($user);
+
+        return rtrim((string) config('app.url'), '/').'/partner/activate?'.http_build_query([
+            'email' => $user->email,
+            'token' => $token,
+        ]);
+    }
+
+    public function createActivationLinkFor(Application $application): string
+    {
+        $user = User::where('email', $application->email)
+            ->where('role', 'partner')
+            ->first();
+
+        if (! $user) {
+            throw ValidationException::withMessages([
+                'application' => ['No partner account exists for this application.'],
+            ]);
+        }
+
+        return $this->createActivationLink($user);
     }
 
     protected function defaultTargetProductId(): int

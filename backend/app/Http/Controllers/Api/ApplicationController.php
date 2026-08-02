@@ -54,7 +54,20 @@ class ApplicationController extends Controller
 
         return response()->json([
             'partner' => $result['partner'],
-            'login_credentials' => $result['login_credentials'],
+            'activation_link' => $result['activation_link'],
+        ]);
+    }
+
+    public function activationLink(Application $application): JsonResponse
+    {
+        if ($application->status !== 'approved') {
+            return response()->json([
+                'message' => 'Only approved applications have activation links.',
+            ], 422);
+        }
+
+        return response()->json([
+            'activation_link' => $this->applicationService->createActivationLinkFor($application),
         ]);
     }
 

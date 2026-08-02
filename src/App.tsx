@@ -16,6 +16,7 @@ import { Login } from "@/pages/Login"
 import { Register } from "@/pages/Register"
 import { PartnerLogin } from "@/pages/partner/PartnerLogin"
 import { PartnerRegister } from "@/pages/partner/PartnerRegister"
+import { PartnerActivate } from "@/pages/partner/PartnerActivate"
 import { PartnerDashboard } from "@/pages/partner/PartnerDashboard"
 import { PartnerMyLink } from "@/pages/partner/PartnerMyLink"
 import { PartnerReferrals } from "@/pages/partner/PartnerReferrals"
@@ -34,6 +35,7 @@ function App() {
       <Route path="/admin/register" element={<Register />} />
       <Route path="/partner/login" element={<PartnerLogin />} />
       <Route path="/partner/register" element={<PartnerRegister />} />
+      <Route path="/partner/activate" element={<PartnerActivate />} />
 
       {/* Protected Admin Routes */}
       <Route element={<ProtectedRoute allowedRoles={["admin"]} loginPath="/admin/login" />}>

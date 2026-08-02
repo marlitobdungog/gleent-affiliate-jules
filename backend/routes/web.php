@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\PartnerActivationController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -12,6 +13,7 @@ Route::prefix('api')->middleware('web')->group(function () {
     Route::post('/login', [AuthController::class, 'login']);
     Route::post('/partner/register', [AuthController::class, 'registerPartner']);
     Route::post('/partner/login', [AuthController::class, 'loginPartner']);
+    Route::post('/partner/activate', PartnerActivationController::class);
     Route::post('/logout', [AuthController::class, 'logout']);
 });
 

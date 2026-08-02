@@ -20,10 +20,11 @@ Route::middleware('web')->group(function () {
 
     Route::apiResource('products', ProductController::class)->middleware('auth');
 
-    Route::apiResource('applications', ApplicationController::class)->middleware('auth');
-    Route::post('applications/{application}/approve', [ApplicationController::class, 'approve'])->middleware('auth');
-    Route::post('applications/{application}/reject', [ApplicationController::class, 'reject'])->middleware('auth');
-    Route::post('applications/{application}/needs-more-info', [ApplicationController::class, 'needsMoreInfo'])->middleware('auth');
+    Route::apiResource('applications', ApplicationController::class)->middleware(['auth', 'admin']);
+    Route::post('applications/{application}/approve', [ApplicationController::class, 'approve'])->middleware(['auth', 'admin']);
+    Route::post('applications/{application}/activation-link', [ApplicationController::class, 'activationLink'])->middleware(['auth', 'admin']);
+    Route::post('applications/{application}/reject', [ApplicationController::class, 'reject'])->middleware(['auth', 'admin']);
+    Route::post('applications/{application}/needs-more-info', [ApplicationController::class, 'needsMoreInfo'])->middleware(['auth', 'admin']);
 
     Route::apiResource('partners', PartnerController::class)->middleware('auth');
     Route::post('partners/{partner}/activate', [PartnerController::class, 'activate'])->middleware('auth');
@@ -61,6 +62,5 @@ Route::middleware('web')->group(function () {
         Route::get('marketing-assets/{marketingAsset}/download', [PartnerPortalController::class, 'downloadMarketingAsset']);
     });
 });
-
 
 

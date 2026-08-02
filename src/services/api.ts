@@ -169,6 +169,7 @@ export const applicationsApi = {
   update: (id: string, data: any) => api.put(`/applications/${id}`, data),
   delete: (id: string) => api.delete(`/applications/${id}`),
   approve: (id: string) => api.post(`/applications/${id}/approve`, {}),
+  activationLink: (id: string) => api.post(`/applications/${id}/activation-link`, {}),
   reject: (id: string, notes: string) => api.post(`/applications/${id}/reject`, { review_notes: notes }),
   needsMoreInfo: (id: string, notes: string) => api.post(`/applications/${id}/needs-more-info`, { review_notes: notes }),
 };
@@ -265,6 +266,12 @@ export const partnerAuthApi = {
     await authApi.getCsrfCookie();
     return api.post('/partner/login', data);
   },
+  activate: (data: {
+    email: string;
+    token: string;
+    password: string;
+    password_confirmation: string;
+  }) => api.post('/partner/activate', data),
 };
 
 export const partnerPortalApi = {

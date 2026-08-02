@@ -23,7 +23,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   React.useEffect(() => {
     const initAuth = async () => {
-      const isPublicAuthPage = ["/admin/login", "/admin/register", "/partner/login", "/partner/register"]
+      const isPublicAuthPage = ["/admin/login", "/admin/register", "/partner/login", "/partner/register", "/partner/activate"]
         .includes(window.location.pathname)
 
       if (isPublicAuthPage && !localStorage.getItem("auth_user")) {
