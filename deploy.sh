@@ -33,11 +33,16 @@ DB_PORT="${DB_PORT:-3310}"
 DB_DATABASE="${DB_DATABASE:-}"
 DB_USERNAME="${DB_USERNAME:-}"
 DB_PASSWORD="${DB_PASSWORD:-}"
-APP_URL="${APP_URL:-http://localhost}"
-FRONTEND_ORIGIN="${FRONTEND_ORIGIN:-https://gleent-affiliate-frontend-1083135128051.asia-southeast1.run.app}"
+APP_URL="${APP_URL:-https://affiliate.sprinthrapis.com}"
+FRONTEND_ORIGIN="${FRONTEND_ORIGIN:-https://affiliate.gleent.com}"
+LEGACY_FRONTEND_ORIGIN="${LEGACY_FRONTEND_ORIGIN:-https://gleent-affiliate-frontend-1083135128051.asia-southeast1.run.app}"
 ALT_FRONTEND_ORIGIN="${ALT_FRONTEND_ORIGIN:-https://gleent-affiliate-frontend-lijnomv2zq-as.a.run.app}"
 FRONTEND_HOST="${FRONTEND_ORIGIN#http://}"
 FRONTEND_HOST="${FRONTEND_HOST#https://}"
+LEGACY_FRONTEND_HOST="${LEGACY_FRONTEND_ORIGIN#http://}"
+LEGACY_FRONTEND_HOST="${LEGACY_FRONTEND_HOST#https://}"
+ALT_FRONTEND_HOST="${ALT_FRONTEND_ORIGIN#http://}"
+ALT_FRONTEND_HOST="${ALT_FRONTEND_HOST#https://}"
 
 if [[ -z "$APP_KEY" && -f backend/.env ]]; then
   APP_KEY="$(grep -E '^APP_KEY=' backend/.env | head -n 1 | cut -d= -f2-)"
@@ -78,8 +83,8 @@ DB_PASSWORD=$DB_PASSWORD
 SESSION_DRIVER=database
 SESSION_SECURE_COOKIE=true
 SESSION_SAME_SITE=none
-SANCTUM_STATEFUL_DOMAINS=${FRONTEND_HOST},gleent-affiliate-frontend-lijnomv2zq-as.a.run.app,localhost,localhost:5173,localhost:8089,127.0.0.1,127.0.0.1:5173,127.0.0.1:8089
-CORS_ALLOWED_ORIGINS=${FRONTEND_ORIGIN},${ALT_FRONTEND_ORIGIN},http://localhost:5173,http://localhost:8089
+SANCTUM_STATEFUL_DOMAINS=${FRONTEND_HOST},${LEGACY_FRONTEND_HOST},${ALT_FRONTEND_HOST},localhost,localhost:5173,localhost:8089,127.0.0.1,127.0.0.1:5173,127.0.0.1:8089
+CORS_ALLOWED_ORIGINS=${FRONTEND_ORIGIN},${LEGACY_FRONTEND_ORIGIN},${ALT_FRONTEND_ORIGIN},http://localhost:5173,http://localhost:8089
 CORS_ALLOWED_ORIGINS_PATTERNS=#^https://.*\\.a\\.run\\.app$#,#^http://localhost(:\\d+)?$#
 LOG_LEVEL=info
 EOF
@@ -129,7 +134,7 @@ fi
 
 echo "Backend URL: $BACKEND_URL"
 cat > "$BACKEND_ENV_YAML" <<'EOF'
-APP_URL: "$BACKEND_URL"
+APP_URL: "$APP_URL"
 FRONTEND_URL: "$FRONTEND_ORIGIN"
 APP_ENV: "production"
 APP_DEBUG: "false"
@@ -143,12 +148,12 @@ DB_PASSWORD: "$DB_PASSWORD"
 SESSION_DRIVER: "database"
 SESSION_SECURE_COOKIE: "true"
 SESSION_SAME_SITE: "none"
-SANCTUM_STATEFUL_DOMAINS: "gleent-affiliate-frontend-1083135128051.asia-southeast1.run.app,gleent-affiliate-frontend-lijnomv2zq-as.a.run.app,localhost,localhost:5173,localhost:8089,127.0.0.1,127.0.0.1:5173,127.0.0.1:8089"
-CORS_ALLOWED_ORIGINS: "https://gleent-affiliate-frontend-1083135128051.asia-southeast1.run.app,https://gleent-affiliate-frontend-lijnomv2zq-as.a.run.app,http://localhost:5173,http://localhost:8089"
+SANCTUM_STATEFUL_DOMAINS: "$FRONTEND_HOST,$LEGACY_FRONTEND_HOST,$ALT_FRONTEND_HOST,localhost,localhost:5173,localhost:8089,127.0.0.1,127.0.0.1:5173,127.0.0.1:8089"
+CORS_ALLOWED_ORIGINS: "$FRONTEND_ORIGIN,$LEGACY_FRONTEND_ORIGIN,$ALT_FRONTEND_ORIGIN,http://localhost:5173,http://localhost:8089"
 CORS_ALLOWED_ORIGINS_PATTERNS: "#^https://.*\\.a\\.run\\.app$#,#^http://localhost(:\\d+)?$#"
 LOG_LEVEL: "info"
 EOF
-sed -i.bak 's|\$BACKEND_URL|'"$BACKEND_URL"'|g; s|\$FRONTEND_ORIGIN|'"$FRONTEND_ORIGIN"'|g; s|\$APP_KEY|'"${APP_KEY//|\\|}"'|g; s|\$DB_HOST|'"$DB_HOST"'|g; s|\$DB_PORT|'"$DB_PORT"'|g; s|\$DB_DATABASE|'"$DB_DATABASE"'|g; s|\$DB_USERNAME|'"$DB_USERNAME"'|g; s|\$DB_PASSWORD|'"${DB_PASSWORD//|\\|}"'|g' "$BACKEND_ENV_YAML"
+sed -i.bak 's|\$APP_URL|'"$APP_URL"'|g; s|\$FRONTEND_ORIGIN|'"$FRONTEND_ORIGIN"'|g; s|\$FRONTEND_HOST|'"$FRONTEND_HOST"'|g; s|\$LEGACY_FRONTEND_ORIGIN|'"$LEGACY_FRONTEND_ORIGIN"'|g; s|\$LEGACY_FRONTEND_HOST|'"$LEGACY_FRONTEND_HOST"'|g; s|\$ALT_FRONTEND_ORIGIN|'"$ALT_FRONTEND_ORIGIN"'|g; s|\$ALT_FRONTEND_HOST|'"$ALT_FRONTEND_HOST"'|g; s|\$APP_KEY|'"${APP_KEY//|\\|}"'|g; s|\$DB_HOST|'"$DB_HOST"'|g; s|\$DB_PORT|'"$DB_PORT"'|g; s|\$DB_DATABASE|'"$DB_DATABASE"'|g; s|\$DB_USERNAME|'"$DB_USERNAME"'|g; s|\$DB_PASSWORD|'"${DB_PASSWORD//|\\|}"'|g' "$BACKEND_ENV_YAML"
 rm -f "$BACKEND_ENV_YAML.bak"
 gcloud run services update "$BACKEND_SERVICE" \
   --project "$PROJECT_ID" \
