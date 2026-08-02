@@ -21,6 +21,7 @@ services:
       DB_USERNAME: gleent_affiliate
       DB_PASSWORD: gleent_affiliate
       APP_URL: http://localhost:8089
+      FRONTEND_URL: http://localhost:8089
       SANCTUM_STATEFUL_DOMAINS: localhost,localhost:8089,127.0.0.1,127.0.0.1:8089
     command: >
       sh -lc "mysql --skip-ssl -h db -uroot -proot -e \"CREATE DATABASE IF NOT EXISTS gleent_affiliate_test; CREATE USER IF NOT EXISTS 'gleent_affiliate'@'%' IDENTIFIED BY 'gleent_affiliate'; GRANT ALL PRIVILEGES ON gleent_affiliate.* TO 'gleent_affiliate'@'%'; GRANT ALL PRIVILEGES ON gleent_affiliate_test.* TO 'gleent_affiliate'@'%'; FLUSH PRIVILEGES;\" &&

@@ -67,6 +67,7 @@ cat > "$BACKEND_ENV_FILE" <<EOF
 APP_ENV=production
 APP_DEBUG=false
 APP_URL=$APP_URL
+FRONTEND_URL=$FRONTEND_ORIGIN
 APP_KEY=$APP_KEY
 DB_CONNECTION=mysql
 DB_HOST=$DB_HOST
@@ -129,6 +130,7 @@ fi
 echo "Backend URL: $BACKEND_URL"
 cat > "$BACKEND_ENV_YAML" <<'EOF'
 APP_URL: "$BACKEND_URL"
+FRONTEND_URL: "$FRONTEND_ORIGIN"
 APP_ENV: "production"
 APP_DEBUG: "false"
 APP_KEY: "$APP_KEY"
@@ -146,7 +148,7 @@ CORS_ALLOWED_ORIGINS: "https://gleent-affiliate-frontend-1083135128051.asia-sout
 CORS_ALLOWED_ORIGINS_PATTERNS: "#^https://.*\\.a\\.run\\.app$#,#^http://localhost(:\\d+)?$#"
 LOG_LEVEL: "info"
 EOF
-sed -i.bak 's|\$BACKEND_URL|'"$BACKEND_URL"'|g; s|\$APP_KEY|'"${APP_KEY//|\\|}"'|g; s|\$DB_HOST|'"$DB_HOST"'|g; s|\$DB_PORT|'"$DB_PORT"'|g; s|\$DB_DATABASE|'"$DB_DATABASE"'|g; s|\$DB_USERNAME|'"$DB_USERNAME"'|g; s|\$DB_PASSWORD|'"${DB_PASSWORD//|\\|}"'|g' "$BACKEND_ENV_YAML"
+sed -i.bak 's|\$BACKEND_URL|'"$BACKEND_URL"'|g; s|\$FRONTEND_ORIGIN|'"$FRONTEND_ORIGIN"'|g; s|\$APP_KEY|'"${APP_KEY//|\\|}"'|g; s|\$DB_HOST|'"$DB_HOST"'|g; s|\$DB_PORT|'"$DB_PORT"'|g; s|\$DB_DATABASE|'"$DB_DATABASE"'|g; s|\$DB_USERNAME|'"$DB_USERNAME"'|g; s|\$DB_PASSWORD|'"${DB_PASSWORD//|\\|}"'|g' "$BACKEND_ENV_YAML"
 rm -f "$BACKEND_ENV_YAML.bak"
 gcloud run services update "$BACKEND_SERVICE" \
   --project "$PROJECT_ID" \

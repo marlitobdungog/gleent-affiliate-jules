@@ -39,6 +39,8 @@ Laravel API / Sanctum / database
 
 The browser must use the frontend hostname for API requests. It must not call the backend Cloud Run hostname directly in production.
 
+The backend must also receive `FRONTEND_URL` set to that same public frontend origin. Laravel uses this value when generating browser-facing links, such as partner account activation links; `APP_URL` remains the backend service URL.
+
 ## Why the Proxy Is Required
 
 Laravel protects state-changing routes with CSRF validation. The `/sanctum/csrf-cookie` endpoint sets an `XSRF-TOKEN` cookie, and the frontend sends that token in the `X-XSRF-TOKEN` request header.

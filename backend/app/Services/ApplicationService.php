@@ -83,7 +83,7 @@ class ApplicationService
     {
         $token = Password::createToken($user);
 
-        return rtrim((string) config('app.url'), '/').'/partner/activate?'.http_build_query([
+        return rtrim((string) config('app.frontend_url'), '/').'/partner/activate?'.http_build_query([
             'email' => $user->email,
             'token' => $token,
         ]);

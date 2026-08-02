@@ -14,7 +14,7 @@ class PartnerActivationTest extends TestCase
 
     public function test_admin_can_approve_an_application_and_partner_can_activate_and_log_in(): void
     {
-        config(['app.url' => 'http://localhost:8089']);
+        config(['app.frontend_url' => 'http://localhost:8089']);
 
         $admin = User::factory()->create(['role' => 'admin']);
         $application = $this->createPartnerApplication();
