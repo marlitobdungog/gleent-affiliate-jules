@@ -199,10 +199,11 @@ gcloud run jobs deploy "${BACKEND_SERVICE}-migrate" \
   --execute-now \
   --wait >/dev/null
 
-echo "Building and pushing frontend image with API base $BACKEND_URL..."
+echo "Building and pushing frontend image with backend proxy $BACKEND_URL..."
 docker buildx build \
   --platform linux/amd64 \
-  --build-arg VITE_API_BASE_URL="$BACKEND_URL" \
+  --build-arg VITE_API_BASE_URL="" \
+  --build-arg BACKEND_URL="$BACKEND_URL" \
   -f docker/frontend/Dockerfile \
   -t "$FRONTEND_IMAGE" \
   --push \
