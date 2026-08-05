@@ -39,7 +39,7 @@ const mainNav = [
   { label: "Commissions", icon: Coins, route: "/admin/commissions" },
   { label: "Payouts", icon: Wallet, route: "/admin/payouts" },
   { label: "Products", icon: Package, route: "/admin/products" },
-  { label: "Marketing Materials", icon: Image, route: "/admin/marketing-materials" },
+  { label: "Marketing Assets", icon: Image, route: "/admin/marketing-materials" },
   { label: "Settings", icon: Settings, route: "/admin/settings" },
 ]
 

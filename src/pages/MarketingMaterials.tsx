@@ -72,7 +72,7 @@ function formatDate(value: string | null) {
 
 function errorMessage(error: any) {
   const errors = error?.errors as Record<string, string[]> | undefined
-  return errors ? Object.values(errors).flat()[0] : error?.message || "Unable to save marketing material."
+  return errors ? Object.values(errors).flat()[0] : error?.message || "Unable to save marketing asset."
 }
 
 export function MarketingMaterials() {
@@ -96,7 +96,7 @@ export function MarketingMaterials() {
       setAssets(assetData)
       setProducts(productData)
     } catch (error: any) {
-      toast.error(error.message || "Failed to load marketing materials.")
+      toast.error(error.message || "Failed to load marketing assets.")
     } finally {
       setLoading(false)
     }
@@ -160,10 +160,10 @@ export function MarketingMaterials() {
     try {
       if (selectedAsset) {
         await marketingAssetsApi.update(selectedAsset.id, payload)
-        toast.success("Marketing material updated.")
+        toast.success("Marketing asset updated.")
       } else {
         await marketingAssetsApi.create(payload)
-        toast.success("Marketing material added.")
+        toast.success("Marketing asset added.")
       }
       setFormOpen(false)
       await fetchData()
@@ -179,12 +179,12 @@ export function MarketingMaterials() {
     setSaving(true)
     try {
       await marketingAssetsApi.delete(selectedAsset.id)
-      toast.success("Marketing material deleted.")
+      toast.success("Marketing asset deleted.")
       setDeleteOpen(false)
       setSelectedAsset(null)
       await fetchData()
     } catch (error: any) {
-      toast.error(error.message || "Unable to delete marketing material.")
+      toast.error(error.message || "Unable to delete marketing asset.")
     } finally {
       setSaving(false)
     }
@@ -194,7 +194,7 @@ export function MarketingMaterials() {
     <div className="p-6 space-y-6 max-w-screen-2xl">
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold text-foreground tracking-tight">Marketing Materials</h1>
+          <h1 className="text-xl font-semibold text-foreground tracking-tight">Marketing Assets</h1>
           <p className="text-sm text-muted-foreground mt-1">Manage promotional files partners can download and share.</p>
         </div>
         <Button onClick={openAdd}><Plus className="size-4 mr-2" />Add Material</Button>
@@ -206,8 +206,8 @@ export function MarketingMaterials() {
       </div>
 
       <Card className="border border-border shadow-none"><CardContent className="p-0"><div className="overflow-x-auto">
-        {loading ? <div className="p-8 text-center text-muted-foreground">Loading marketing materials...</div>
-          : filteredAssets.length === 0 ? <div className="p-8 text-center text-muted-foreground">No marketing materials found.</div>
+        {loading ? <div className="p-8 text-center text-muted-foreground">Loading marketing assets...</div>
+          : filteredAssets.length === 0 ? <div className="p-8 text-center text-muted-foreground">No marketing assets found.</div>
           : <table className="w-full text-sm"><thead><tr className="border-b border-border">
             <th className="px-6 py-2.5 text-left text-xs font-medium text-muted-foreground">Material</th>
             <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">Products</th>
@@ -226,7 +226,7 @@ export function MarketingMaterials() {
       </div></CardContent></Card>
 
       <Dialog open={formOpen} onOpenChange={setFormOpen}><DialogContent className="max-h-[90vh] overflow-y-auto"><form onSubmit={handleSave}>
-        <DialogHeader><DialogTitle>{selectedAsset ? "Edit Marketing Material" : "Add Marketing Material"}</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{selectedAsset ? "Edit Marketing Asset" : "Add Marketing Asset"}</DialogTitle></DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid gap-2"><Label htmlFor="asset-title">Title</Label><Input id="asset-title" value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} required /></div>
           <div className="grid gap-2"><Label htmlFor="asset-type">Material type</Label><Select value={form.type} onValueChange={(type) => setForm({ ...form, type })}><SelectTrigger id="asset-type"><SelectValue /></SelectTrigger><SelectContent>{["Banner", "Copy", "Brochure", "Social", "Email"].map((type) => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent></Select></div>
@@ -237,7 +237,7 @@ export function MarketingMaterials() {
         <DialogFooter><Button type="button" variant="outline" onClick={() => setFormOpen(false)}>Cancel</Button><Button type="submit" disabled={saving}>{saving ? <Loader2 className="size-4 animate-spin mr-2" /> : <Upload className="size-4 mr-2" />}{selectedAsset ? "Save Changes" : "Upload Material"}</Button></DialogFooter>
       </form></DialogContent></Dialog>
 
-      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}><DialogContent><DialogHeader><DialogTitle>Delete Marketing Material</DialogTitle></DialogHeader><p className="py-4 text-sm text-muted-foreground">Delete <span className="font-medium text-foreground">{selectedAsset?.title}</span>? Partners will no longer be able to download it.</p><DialogFooter><Button variant="outline" onClick={() => setDeleteOpen(false)}>Cancel</Button><Button variant="destructive" onClick={handleDelete} disabled={saving}>{saving ? "Deleting..." : "Delete"}</Button></DialogFooter></DialogContent></Dialog>
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}><DialogContent><DialogHeader><DialogTitle>Delete Marketing Asset</DialogTitle></DialogHeader><p className="py-4 text-sm text-muted-foreground">Delete <span className="font-medium text-foreground">{selectedAsset?.title}</span>? Partners will no longer be able to download it.</p><DialogFooter><Button variant="outline" onClick={() => setDeleteOpen(false)}>Cancel</Button><Button variant="destructive" onClick={handleDelete} disabled={saving}>{saving ? "Deleting..." : "Delete"}</Button></DialogFooter></DialogContent></Dialog>
     </div>
   )
 }
