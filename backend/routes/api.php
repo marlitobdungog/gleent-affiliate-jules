@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CommissionController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\DealController;
+use App\Http\Controllers\Api\MarketingAssetController;
 use App\Http\Controllers\Api\PartnerController;
 use App\Http\Controllers\Api\PartnerPortalController;
 use App\Http\Controllers\Api\PayoutController;
@@ -19,7 +20,9 @@ Route::middleware('web')->group(function () {
 
     Route::get('/dashboard/summary', [DashboardController::class, 'summary'])->middleware('auth');
 
-    Route::apiResource('products', ProductController::class)->middleware('auth');
+    Route::apiResource('products', ProductController::class)->middleware(['auth', 'admin']);
+
+    Route::apiResource('marketing-assets', MarketingAssetController::class)->middleware(['auth', 'admin']);
 
     Route::apiResource('applications', ApplicationController::class)->middleware(['auth', 'admin']);
     Route::post('applications/{application}/approve', [ApplicationController::class, 'approve'])->middleware(['auth', 'admin']);

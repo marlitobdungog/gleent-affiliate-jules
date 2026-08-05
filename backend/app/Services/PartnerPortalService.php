@@ -165,9 +165,24 @@ class PartnerPortalService
     {
         return MarketingAsset::query()
             ->where('is_active', true)
+            ->where(function ($query) {
+                $query->whereDoesntHave('products', fn ($productQuery) => $productQuery->withTrashed())
+                    ->orWhereHas('products', fn ($productQuery) => $productQuery->where('status', 'active'));
+            })
+            ->with(['products' => fn ($query) => $query->where('status', 'active')->select('products.id', 'name')])
             ->orderBy('sort_order')
             ->get()
             ->map(fn (MarketingAsset $asset) => $this->formatMarketingAsset($asset));
+    }
+
+    public function isMarketingAssetAvailable(MarketingAsset $asset): bool
+    {
+        if (! $asset->is_active) {
+            return false;
+        }
+
+        return ! $asset->products()->withTrashed()->exists()
+            || $asset->products()->where('status', 'active')->exists();
     }
 
     public function getProducts(): Collection
@@ -253,6 +268,7 @@ class PartnerPortalService
             'type' => $asset->type,
             'format' => $asset->format,
             'size' => $this->formatFileSize($asset->file_size_bytes),
+            'products' => $asset->products->pluck('name')->values(),
             'download_url' => '/api/partner/marketing-assets/'.$asset->id.'/download',
         ];
     }

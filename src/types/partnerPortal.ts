@@ -90,6 +90,7 @@ export interface PartnerMarketingAsset {
   type: string
   format: string
   size: string
+  products: string[]
   download_url: string
 }
 

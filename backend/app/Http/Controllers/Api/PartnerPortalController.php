@@ -139,9 +139,9 @@ class PartnerPortalController extends Controller
         return response()->json($service->getMarketingAssets());
     }
 
-    public function downloadMarketingAsset(Request $request, MarketingAsset $marketingAsset): BinaryFileResponse|JsonResponse
+    public function downloadMarketingAsset(Request $request, MarketingAsset $marketingAsset, PartnerPortalService $service): BinaryFileResponse|JsonResponse
     {
-        if (! $marketingAsset->is_active) {
+        if (! $service->isMarketingAssetAvailable($marketingAsset)) {
             return response()->json(['message' => 'Asset not available.'], 404);
         }
 

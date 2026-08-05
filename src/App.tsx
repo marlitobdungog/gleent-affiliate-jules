@@ -12,6 +12,7 @@ import { Commissions } from "@/pages/Commissions"
 import { Payouts } from "@/pages/Payouts"
 import { Products } from "@/pages/Products"
 import { Settings } from "@/pages/Settings"
+import { MarketingMaterials } from "@/pages/MarketingMaterials"
 import { Login } from "@/pages/Login"
 import { PartnerLogin } from "@/pages/partner/PartnerLogin"
 import { PartnerRegister } from "@/pages/partner/PartnerRegister"
@@ -49,6 +50,7 @@ function App() {
           <Route path="commissions" element={<Commissions />} />
           <Route path="payouts" element={<Payouts />} />
           <Route path="products" element={<Products />} />
+          <Route path="marketing-materials" element={<MarketingMaterials />} />
           <Route path="settings" element={<Settings />} />
         </Route>
       </Route>

@@ -66,6 +66,11 @@ export function PartnerMarketingAssets() {
                       <CardDescription className="mt-1">
                         {asset.type} · {asset.format} · {asset.size}
                       </CardDescription>
+                      {asset.products.length > 0 && (
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          For: {asset.products.join(", ")}
+                        </p>
+                      )}
                     </div>
                   </div>
                 </CardHeader>

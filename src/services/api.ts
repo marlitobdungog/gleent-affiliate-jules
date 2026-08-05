@@ -152,6 +152,21 @@ export const api = {
       credentials: 'include'
     }).then(handleResponse);
   },
+  postForm: async (url: string, data: FormData) => {
+    await ensureCsrfToken();
+    const headers: Record<string, string> = { Accept: 'application/json' };
+    const csrfToken = getCookie('XSRF-TOKEN');
+    if (csrfToken) {
+      headers['X-XSRF-TOKEN'] = decodeURIComponent(csrfToken);
+    }
+
+    return fetch(backendUrl(`/api${url}`), {
+      method: 'POST',
+      headers,
+      body: data,
+      credentials: 'include',
+    }).then(handleResponse);
+  },
 };
 
 export const productsApi = {
@@ -160,6 +175,16 @@ export const productsApi = {
   create: (data: any) => api.post('/products', data),
   update: (id: string, data: any) => api.put(`/products/${id}`, data),
   delete: (id: string) => api.delete(`/products/${id}`),
+};
+
+export const marketingAssetsApi = {
+  getAll: () => api.get('/marketing-assets'),
+  create: (data: FormData) => api.postForm('/marketing-assets', data),
+  update: (id: string | number, data: FormData) => {
+    data.append('_method', 'PUT');
+    return api.postForm(`/marketing-assets/${id}`, data);
+  },
+  delete: (id: string | number) => api.delete(`/marketing-assets/${id}`),
 };
 
 export const applicationsApi = {
