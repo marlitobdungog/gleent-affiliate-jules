@@ -13,7 +13,6 @@ import { Payouts } from "@/pages/Payouts"
 import { Products } from "@/pages/Products"
 import { Settings } from "@/pages/Settings"
 import { Login } from "@/pages/Login"
-import { Register } from "@/pages/Register"
 import { PartnerLogin } from "@/pages/partner/PartnerLogin"
 import { PartnerRegister } from "@/pages/partner/PartnerRegister"
 import { PartnerActivate } from "@/pages/partner/PartnerActivate"
@@ -32,7 +31,6 @@ function App() {
   return (
     <Routes>
       <Route path="/admin/login" element={<Login />} />
-      <Route path="/admin/register" element={<Register />} />
       <Route path="/partner/login" element={<PartnerLogin />} />
       <Route path="/partner/register" element={<PartnerRegister />} />
       <Route path="/partner/activate" element={<PartnerActivate />} />

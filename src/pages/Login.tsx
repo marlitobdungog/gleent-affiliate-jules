@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { BarChart3, Loader2 } from "lucide-react"
-import { useNavigate, Link } from "react-router-dom"
+import { useNavigate } from "react-router-dom"
 import { useState } from "react"
 import { authApi } from "@/services/api"
 import { useAuth } from "@/hooks/useAuth"
@@ -96,12 +96,6 @@ export function Login() {
                 Login
               </Button>
             </form>
-            <div className="mt-4 text-center text-sm">
-              Don't have an account?{" "}
-              <Link to="/admin/register" className="text-primary hover:underline font-medium">
-                Register
-              </Link>
-            </div>
           </CardContent>
         </Card>
       </div>

@@ -227,6 +227,12 @@ export const settingsApi = {
   update: (data: any) => api.put('/settings', data),
 };
 
+export const adminUsersApi = {
+  getAll: () => api.get('/admin-users'),
+  create: (data: any) => api.post('/admin-users', data),
+  delete: (id: string | number) => api.delete(`/admin-users/${id}`),
+};
+
 export const dashboardApi = {
   getSummary: () => api.get('/dashboard/summary'),
 };
@@ -244,10 +250,6 @@ export const authApi = {
       console.warn('Failed to fetch CSRF cookie:', err);
       return null;
     }
-  },
-  register: async (data: any) => {
-    await authApi.getCsrfCookie();
-    return api.post('/register', data);
   },
   login: async (data: any) => {
     await authApi.getCsrfCookie();

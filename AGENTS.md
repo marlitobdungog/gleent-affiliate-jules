@@ -16,7 +16,7 @@ Monorepo for **Gleent Affiliate Admin Portal** (React SPA + Laravel API). The re
    ```bash
    sudo docker compose up -d --build
    ```
-   Services: `frontend` (Vite :5173), `backend` (PHP-FPM), `web` (Nginx :8089), `db` (MySQL :3310). Backend uses **SQLite by default** (`backend/.env`); MySQL is provisioned but unused unless you switch `DB_CONNECTION`.
+   Services: `frontend` (Vite :5173), `backend` (PHP-FPM), `web` (Nginx :8089), `db` (MySQL container :3306, host port :3311). Docker Compose configures the backend with `DB_CONNECTION=mysql`, `DB_HOST=db`, and `DB_DATABASE=gleent_affiliate`.
 
 ### First-time backend setup (if `backend/vendor` or `.env` missing)
 
@@ -24,15 +24,21 @@ Monorepo for **Gleent Affiliate Admin Portal** (React SPA + Laravel API). The re
 cp backend/.env.example backend/.env
 # Required for SPA auth through Nginx on :8089:
 #   APP_URL=http://localhost:8089
-#   SANCTUM_STATEFUL_DOMAINS=localhost,localhost:8089,localhost:5173,127.0.0.1,127.0.0.1:8089
+#   DB_CONNECTION=mysql
+#   DB_HOST=db
+#   DB_PORT=3306
+#   DB_DATABASE=gleent_affiliate
+#   DB_USERNAME=gleent_affiliate
+#   DB_PASSWORD=gleent_affiliate
+#   SANCTUM_STATEFUL_DOMAINS=localhost,localhost:8089,127.0.0.1,127.0.0.1:8089
 docker run --rm -v "$(pwd)/backend:/var/www" -w /var/www composer:2 install --no-interaction --prefer-dist
 docker run --rm -v "$(pwd)/backend:/var/www" -w /var/www php:8.4-cli php artisan key:generate --no-interaction
-sudo chown -R 33:33 backend/storage backend/bootstrap/cache backend/database
+sudo chown -R 33:33 backend/storage backend/bootstrap/cache
 ```
 
 ### Permission gotchas (Docker + bind mounts)
 
-- Laravel needs `www-data` (uid 33) write access to `backend/storage`, `backend/bootstrap/cache`, and `backend/database/database.sqlite`.
+- Laravel needs `www-data` (uid 33) write access to `backend/storage` and `backend/bootstrap/cache`.
 - The `frontend` container runs `npm install` as root; if host `npm run build` fails with `EACCES` on `node_modules/.vite-temp`, run: `sudo chown -R $USER:$USER node_modules`.
 
 ### Lint / test / build
@@ -47,7 +53,7 @@ sudo chown -R 33:33 backend/storage backend/bootstrap/cache backend/database
 ### Manual hello-world test
 
 1. Open http://localhost:8089/admin/login
-2. Register or log in (e.g. `admin@example.com` / `password123`)
+2. Log in with an existing administrator account (e.g. `admin@example.com` / `password123` when seeded locally)
 3. Confirm redirect to `/admin/dashboard` and API-backed pages load
 
 ### Frontend-only (no Docker)

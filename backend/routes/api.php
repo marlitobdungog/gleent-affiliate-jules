@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\AdminUserController;
 use App\Http\Controllers\Api\ApplicationController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CommissionController;
@@ -44,8 +45,12 @@ Route::middleware('web')->group(function () {
     Route::post('payouts/{payout}/hold', [PayoutController::class, 'hold'])->middleware('auth');
     Route::post('payouts/{payout}/cancel', [PayoutController::class, 'cancel'])->middleware('auth');
 
-    Route::get('settings', [SettingController::class, 'index'])->middleware('auth');
-    Route::put('settings', [SettingController::class, 'update'])->middleware('auth');
+    Route::get('settings', [SettingController::class, 'index'])->middleware(['auth', 'admin']);
+    Route::put('settings', [SettingController::class, 'update'])->middleware(['auth', 'admin']);
+
+    Route::get('admin-users', [AdminUserController::class, 'index'])->middleware(['auth', 'admin']);
+    Route::post('admin-users', [AdminUserController::class, 'store'])->middleware(['auth', 'admin']);
+    Route::delete('admin-users/{user}', [AdminUserController::class, 'destroy'])->middleware(['auth', 'admin']);
 
     Route::middleware(['auth', 'partner'])->prefix('partner')->group(function () {
         Route::get('profile', [PartnerPortalController::class, 'profile']);
@@ -62,5 +67,3 @@ Route::middleware('web')->group(function () {
         Route::get('marketing-assets/{marketingAsset}/download', [PartnerPortalController::class, 'downloadMarketingAsset']);
     });
 });
-
-

@@ -46,6 +46,7 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'is_primary_admin' => 'boolean',
             'password' => 'hashed',
         ];
     }
@@ -58,6 +59,11 @@ class User extends Authenticatable
     public function isPartner(): bool
     {
         return $this->role === 'partner';
+    }
+
+    public function isPrimaryAdmin(): bool
+    {
+        return $this->isAdmin() && $this->is_primary_admin;
     }
 
     public function partner(): HasOne
