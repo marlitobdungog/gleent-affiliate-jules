@@ -223,4 +223,47 @@ class AdminUserManagementTest extends TestCase
         ])->assertOk()
             ->assertJsonPath('user.role', 'admin');
     }
+
+    public function test_first_admin_bootstrap_is_available_without_a_primary_admin(): void
+    {
+        $this->getJson('/api/admin/bootstrap-status')
+            ->assertOk()
+            ->assertJsonPath('available', true);
+
+        $this->postJson('/api/admin/bootstrap', [
+            'name' => 'Primary Admin',
+            'email' => 'primary@example.com',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+        ])->assertCreated()
+            ->assertJsonPath('user.role', 'admin')
+            ->assertJsonPath('user.is_primary_admin', true);
+
+        $this->assertDatabaseHas('users', [
+            'email' => 'primary@example.com',
+            'role' => 'admin',
+            'is_primary_admin' => true,
+        ]);
+    }
+
+    public function test_first_admin_bootstrap_closes_after_primary_admin_exists(): void
+    {
+        User::factory()->create([
+            'role' => 'admin',
+            'is_primary_admin' => true,
+        ]);
+
+        $this->getJson('/api/admin/bootstrap-status')
+            ->assertOk()
+            ->assertJsonPath('available', false);
+
+        $this->postJson('/api/admin/bootstrap', [
+            'name' => 'Another Admin',
+            'email' => 'another@example.com',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+        ])->assertStatus(409);
+
+        $this->assertDatabaseMissing('users', ['email' => 'another@example.com']);
+    }
 }

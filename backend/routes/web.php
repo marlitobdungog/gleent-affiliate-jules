@@ -9,6 +9,8 @@ Route::get('/', function () {
 });
 
 Route::prefix('api')->middleware('web')->group(function () {
+    Route::get('/admin/bootstrap-status', [AuthController::class, 'bootstrapStatus']);
+    Route::post('/admin/bootstrap', [AuthController::class, 'bootstrapAdmin']);
     Route::post('/login', [AuthController::class, 'login']);
     Route::post('/partner/register', [AuthController::class, 'registerPartner']);
     Route::post('/partner/login', [AuthController::class, 'loginPartner']);

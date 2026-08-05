@@ -10,13 +10,71 @@ if [[ -f "$CONFIG_FILE" ]]; then
   source "$CONFIG_FILE"
 fi
 
-command -v gcloud >/dev/null 2>&1 || {
-  echo "gcloud is required." >&2
-  exit 1
+# Hardcode the default image tag to deploy here.
+DEPLOY_TAG="${DEPLOY_TAG:-v1.2.0}"
+
+usage() {
+  cat <<'EOF'
+Usage: ./deploy.sh [options]
+
+Options:
+  --tag TAG                 Deploy images built with TAG.
+  --backend-image IMAGE     Deploy this exact backend image.
+  --frontend-image IMAGE    Deploy this exact frontend image.
+  -h, --help               Show this help.
+
+Environment:
+  DEPLOY_TAG                Default image tag to deploy.
+  TAG or IMAGE_TAG          Image tag override.
+  BACKEND_IMAGE             Exact backend image to deploy.
+  FRONTEND_IMAGE            Exact frontend image to deploy.
+EOF
 }
 
-command -v docker >/dev/null 2>&1 || {
-  echo "docker is required." >&2
+CLI_TAG=""
+CLI_BACKEND_IMAGE=""
+CLI_FRONTEND_IMAGE=""
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --tag)
+      if [[ -z "${2:-}" ]]; then
+        echo "--tag requires a value." >&2
+        exit 1
+      fi
+      CLI_TAG="${2:-}"
+      shift 2
+      ;;
+    --backend-image)
+      if [[ -z "${2:-}" ]]; then
+        echo "--backend-image requires a value." >&2
+        exit 1
+      fi
+      CLI_BACKEND_IMAGE="${2:-}"
+      shift 2
+      ;;
+    --frontend-image)
+      if [[ -z "${2:-}" ]]; then
+        echo "--frontend-image requires a value." >&2
+        exit 1
+      fi
+      CLI_FRONTEND_IMAGE="${2:-}"
+      shift 2
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "Unknown option: $1" >&2
+      usage >&2
+      exit 1
+      ;;
+  esac
+done
+
+command -v gcloud >/dev/null 2>&1 || {
+  echo "gcloud is required." >&2
   exit 1
 }
 
@@ -55,14 +113,15 @@ for required_var in APP_KEY DB_HOST DB_DATABASE DB_USERNAME DB_PASSWORD; do
   fi
 done
 
-TAG="${GIT_SHA:-$(git rev-parse --short HEAD 2>/dev/null || date +%Y%m%d%H%M%S)}"
+TAG="${CLI_TAG:-${IMAGE_TAG:-${TAG:-$DEPLOY_TAG}}}"
 AR_HOST="${REGION}-docker.pkg.dev"
 IMAGE_PREFIX="${AR_HOST}/${PROJECT_ID}/${REPOSITORY}"
-BACKEND_IMAGE="${IMAGE_PREFIX}/${BACKEND_SERVICE}:${TAG}"
-FRONTEND_IMAGE="${IMAGE_PREFIX}/${FRONTEND_SERVICE}:${TAG}"
+BACKEND_IMAGE="${CLI_BACKEND_IMAGE:-${BACKEND_IMAGE:-${IMAGE_PREFIX}/${BACKEND_SERVICE}:${TAG}}}"
+FRONTEND_IMAGE="${CLI_FRONTEND_IMAGE:-${FRONTEND_IMAGE:-${IMAGE_PREFIX}/${FRONTEND_SERVICE}:${TAG}}}"
 
 echo "Using project $PROJECT_ID in region $REGION..."
-gcloud auth configure-docker "$AR_HOST" --quiet >/dev/null
+echo "Backend image:  $BACKEND_IMAGE"
+echo "Frontend image: $FRONTEND_IMAGE"
 
 BACKEND_ENV_FILE="$(mktemp "${TMPDIR:-/tmp}/gleent-affiliate-backend-env.XXXXXX")"
 BACKEND_ENV_YAML="$(mktemp "${TMPDIR:-/tmp}/gleent-affiliate-backend-env-yaml.XXXXXX")"
@@ -96,14 +155,6 @@ while IFS='=' read -r key value; do
   value_escaped="${value_escaped//\"/\\\"}"
   echo "${key}: \"${value_escaped}\"" >> "$BACKEND_ENV_YAML"
 done < "$BACKEND_ENV_FILE"
-
-echo "Building and pushing backend image..."
-docker buildx build \
-  --platform linux/amd64 \
-  -f backend/docker/php/Dockerfile \
-  -t "$BACKEND_IMAGE" \
-  --push \
-  backend
 
 echo "Deploying backend service..."
 gcloud run deploy "$BACKEND_SERVICE" \
@@ -205,16 +256,6 @@ gcloud run jobs deploy "${BACKEND_SERVICE}-migrate" \
   --env-vars-file="$MIGRATION_ENV_YAML" \
   --execute-now \
   --wait >/dev/null
-
-echo "Building and pushing frontend image with backend proxy $BACKEND_URL..."
-docker buildx build \
-  --platform linux/amd64 \
-  --build-arg VITE_API_BASE_URL="" \
-  --build-arg BACKEND_URL="$BACKEND_URL" \
-  -f docker/frontend/Dockerfile \
-  -t "$FRONTEND_IMAGE" \
-  --push \
-  .
 
 echo "Deploying frontend service..."
 gcloud run deploy "$FRONTEND_SERVICE" \

@@ -238,6 +238,11 @@ export const dashboardApi = {
 };
 
 export const authApi = {
+  bootstrapStatus: () => api.get('/admin/bootstrap-status', { redirectOnUnauthorized: false }),
+  bootstrapAdmin: async (data: any) => {
+    await authApi.getCsrfCookie();
+    return api.post('/admin/bootstrap', data);
+  },
   getCsrfCookie: async () => {
     try {
       const response = await fetch(backendUrl('/sanctum/csrf-cookie'), { 

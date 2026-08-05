@@ -13,6 +13,8 @@ export function Login() {
   const navigate = useNavigate()
   const { login, user } = useAuth()
   const [loading, setLoading] = useState(false)
+  const [bootstrapAvailable, setBootstrapAvailable] = useState(false)
+  const [checkingBootstrap, setCheckingBootstrap] = useState(true)
 
   React.useEffect(() => {
     if (user?.role === "admin") {
@@ -23,16 +25,27 @@ export function Login() {
   }, [user, navigate])
   const [error, setError] = useState<string | null>(null)
   const [formData, setFormData] = useState({
+    name: "",
     email: "",
     password: "",
+    password_confirmation: "",
   })
+
+  React.useEffect(() => {
+    authApi.bootstrapStatus()
+      .then((response) => setBootstrapAvailable(response.available === true))
+      .catch(() => setBootstrapAvailable(false))
+      .finally(() => setCheckingBootstrap(false))
+  }, [])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError(null)
     try {
-      const response = await authApi.login(formData)
+      const response = bootstrapAvailable
+        ? await authApi.bootstrapAdmin(formData)
+        : await authApi.login({ email: formData.email, password: formData.password })
       login(response.user)
       navigate("/admin/dashboard")
     } catch (err: any) {
@@ -56,9 +69,13 @@ export function Login() {
         </div>
         <Card className="shadow-none">
           <CardHeader>
-            <CardTitle className="text-xl">Welcome back</CardTitle>
+            <CardTitle className="text-xl">
+              {bootstrapAvailable ? "Create primary administrator" : "Welcome back"}
+            </CardTitle>
             <CardDescription>
-              Login to your account to manage the affiliate program.
+              {bootstrapAvailable
+                ? "Set up the first administrator account to continue."
+                : "Login to your account to manage the affiliate program."}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -66,6 +83,19 @@ export function Login() {
               {error && (
                 <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-lg">
                   {error}
+                </div>
+              )}
+              {bootstrapAvailable && (
+                <div className="grid gap-2">
+                  <Label htmlFor="name">Name</Label>
+                  <Input
+                    id="name"
+                    type="text"
+                    placeholder="Admin Name"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    required
+                  />
                 </div>
               )}
               <div className="grid gap-2">
@@ -91,9 +121,21 @@ export function Login() {
                   required
                 />
               </div>
-              <Button type="submit" className="w-full" disabled={loading}>
+              {bootstrapAvailable && (
+                <div className="grid gap-2">
+                  <Label htmlFor="password_confirmation">Confirm Password</Label>
+                  <Input
+                    id="password_confirmation"
+                    type="password"
+                    value={formData.password_confirmation}
+                    onChange={(e) => setFormData({ ...formData, password_confirmation: e.target.value })}
+                    required
+                  />
+                </div>
+              )}
+              <Button type="submit" className="w-full" disabled={loading || checkingBootstrap}>
                 {loading && <Loader2 className="size-4 animate-spin mr-2" />}
-                Login
+                {bootstrapAvailable ? "Create Administrator" : "Login"}
               </Button>
             </form>
           </CardContent>

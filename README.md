@@ -37,6 +37,16 @@ docker compose exec backend php artisan test
 docker compose down
 ```
 
+### Build deployment images
+
+```bash
+TAG=v1 make build      # Linux
+TAG=v1 make build-mac  # macOS, builds linux/amd64 images
+./deploy.sh --tag v1
+```
+
+Set `TAG` in the Makefile to hardcode the build tag, and set `DEPLOY_TAG` in `deploy.sh` to hardcode the deploy tag. The deploy script only deploys existing images; it does not build them.
+
 ### Database defaults
 
 - Host: `db` (inside Docker network) / `127.0.0.1` (from host)
