@@ -4,14 +4,62 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT_DIR"
 
-CONFIG_FILE="${DEPLOY_ENV_FILE:-deploy.env}"
-if [[ -f "$CONFIG_FILE" ]]; then
-  # shellcheck disable=SC1090
-  source "$CONFIG_FILE"
-fi
-
 # Hardcode the default image tag to deploy here.
-DEPLOY_TAG="${DEPLOY_TAG:-v1.3.1}"
+DEPLOY_TAG="${DEPLOY_TAG:-v1.3.2}"
+
+CONFIG_FILE="${DEPLOY_ENV_FILE:-deploy.env}"
+load_env_file() {
+  local env_file="$1"
+  local parsed_env
+
+  parsed_env="$(mktemp "${TMPDIR:-/tmp}/gleent-affiliate-deploy-env.XXXXXX")"
+  if ! python3 - "$env_file" > "$parsed_env" <<'PY'
+import re
+import shlex
+import sys
+
+path = sys.argv[1]
+with open(path, encoding="utf-8") as env_file:
+    for line_number, raw_line in enumerate(env_file, 1):
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith("export "):
+            line = line[7:].lstrip()
+        key, separator, value = line.partition("=")
+        key = key.strip()
+        if not separator or not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", key):
+            print(f"{path}:{line_number}: expected KEY=value", file=sys.stderr)
+            sys.exit(1)
+
+        value = value.strip()
+        if value.startswith(("'", '"')):
+            try:
+                parsed = shlex.split("VALUE=" + value, posix=True)
+            except ValueError:
+                print(f"{path}:{line_number}: invalid quoted value for {key}", file=sys.stderr)
+                sys.exit(1)
+            if len(parsed) != 1 or not parsed[0].startswith("VALUE="):
+                print(f"{path}:{line_number}: invalid quoted value for {key}", file=sys.stderr)
+                sys.exit(1)
+            value = parsed[0][len("VALUE="):]
+
+        print(f"export {key}={shlex.quote(value)}")
+PY
+  then
+    rm -f "$parsed_env"
+    return 1
+  fi
+
+  # Values are shell-escaped by Python after parsing; the input file itself is never executed.
+  # shellcheck disable=SC1090
+  source "$parsed_env"
+  rm -f "$parsed_env"
+}
+
+if [[ -f "$CONFIG_FILE" ]]; then
+  load_env_file "$CONFIG_FILE"
+fi
 
 usage() {
   cat <<'EOF'
