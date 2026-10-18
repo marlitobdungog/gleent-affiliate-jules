@@ -182,7 +182,7 @@ class AffiliateSsoController extends Controller
         $config = (array) config('services.auth_service', []);
         $clientId = (string) ($config[$clientType.'_client_id'] ?? '');
         $callbackUrl = (string) ($config['callback_url'] ?? '');
-        $baseUrl = rtrim((string) ($config['base_url'] ?? ''), '/');
+        $baseUrl = rtrim((string) ($config['browser_url'] ?? $config['base_url'] ?? ''), '/');
         if ($clientId === '' || $callbackUrl === '' || $baseUrl === '') {
             return $this->frontend('/partner/login?error=sso_unavailable');
         }

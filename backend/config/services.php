@@ -37,6 +37,7 @@ return [
 
     'auth_service' => [
         'base_url' => rtrim((string) env('AUTH_SERVICE_URL', 'http://host.docker.internal:8001'), '/'),
+        'browser_url' => rtrim((string) env('AUTH_SERVICE_BROWSER_URL', env('AUTH_SERVICE_URL', 'http://host.docker.internal:8001')), '/'),
         'internal_api_key' => env('AUTH_SERVICE_INTERNAL_API_KEY'),
         'affiliate_client_id' => env('AUTH_SERVICE_AFFILIATE_CLIENT_ID'),
         'affiliate_client_secret' => env('AUTH_SERVICE_AFFILIATE_CLIENT_SECRET'),
