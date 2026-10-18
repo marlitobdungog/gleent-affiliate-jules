@@ -66,6 +66,7 @@ export function Settings() {
     default_partner_link_domain: "",
     default_commission_type: "percentage",
     default_commission_rate: "",
+    default_attribution_window_days: "30",
     minimum_payout_amount: "",
     affiliate_program_status: "active",
   })
@@ -208,6 +209,24 @@ export function Settings() {
                 placeholder="https://example.com/ref"
               />
               <p className="text-[10px] text-muted-foreground">Used when generating new partner links.</p>
+            </div>
+
+            <Separator />
+
+            <div className="grid gap-2 max-w-sm">
+              <Label htmlFor="attribution-window">Default Attribution Window</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  id="attribution-window"
+                  type="number"
+                  min="1"
+                  max="3650"
+                  value={settings.default_attribution_window_days}
+                  onChange={e => setSettings({ ...settings, default_attribution_window_days: e.target.value })}
+                />
+                <span className="text-sm text-muted-foreground">days</span>
+              </div>
+              <p className="text-xs text-muted-foreground">Products inherit this window unless they set an override.</p>
             </div>
 
             <Separator />

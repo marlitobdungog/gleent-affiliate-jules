@@ -175,6 +175,11 @@ export const productsApi = {
   create: (data: any) => api.post('/products', data),
   update: (id: string, data: any) => api.put(`/products/${id}`, data),
   delete: (id: string) => api.delete(`/products/${id}`),
+  updateAffiliateSettings: (id: string, data: any) => api.put(`/products/${id}/affiliate-settings`, data),
+  getLandingPages: (id: string) => api.get(`/products/${id}/landing-pages`),
+  createLandingPage: (id: string, data: any) => api.post(`/products/${id}/landing-pages`, data),
+  updateLandingPage: (id: string, pageId: number, data: any) => api.put(`/products/${id}/landing-pages/${pageId}`, data),
+  makeLandingPageDefault: (id: string, pageId: number) => api.post(`/products/${id}/landing-pages/${pageId}/make-default`, {}),
 };
 
 export const marketingAssetsApi = {

@@ -19,6 +19,7 @@ class PartnerSsoAccessTest extends TestCase
         parent::setUp();
         config([
             'services.auth_service.base_url' => 'https://auth.test',
+            'services.auth_service.browser_url' => 'https://auth.test',
             'services.auth_service.internal_api_key' => 'test-internal-key',
             'services.auth_service.application_code' => 'affiliate',
             'services.auth_service.onboarding_application_code' => 'affiliate-onboarding',
@@ -61,6 +62,35 @@ class PartnerSsoAccessTest extends TestCase
             && $request->header('X-API-Key')[0] === 'test-internal-key'
             && $request['enabled'] === true
             && $request['tenant_id'] === '11111111-1111-4111-8111-111111111111');
+    }
+
+    public function test_product_default_commission_is_used_for_new_partner_onboarding(): void
+    {
+        Http::fake(['https://auth.test/v1/users/*/applications/affiliate' => Http::response([], 200)]);
+        $product = $this->createProduct();
+        $product->update([
+            'default_commission_type' => 'fixed',
+            'default_commission_rate' => 125.50,
+        ]);
+        $admin = User::factory()->create(['role' => 'admin']);
+        $application = Application::create([
+            'name' => 'Product Rate Partner',
+            'email' => 'product-rate@gleent.test',
+            'account_user_id' => '43',
+            'auth_service_user_id' => 'fe405033-3547-4337-80b8-dcf628aa3c27',
+            'auth_service_tenant_id' => '11111111-1111-4111-8111-111111111111',
+            'target_product_id' => $product->id,
+        ]);
+
+        $this->actingAs($admin)
+            ->postJson("/api/applications/{$application->id}/approve")
+            ->assertOk();
+
+        $this->assertDatabaseHas('partners', [
+            'email' => 'product-rate@gleent.test',
+            'commission_type' => 'fixed',
+            'commission_rate' => '125.50',
+        ]);
     }
 
     public function test_pending_application_without_account_link_cannot_be_approved(): void

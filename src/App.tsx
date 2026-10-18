@@ -1,4 +1,6 @@
+import { lazy, Suspense } from "react"
 import { Routes, Route, Navigate } from "react-router-dom"
+import { Loader2 } from "lucide-react"
 import { PerformanceShell } from "@/components/layout/PerformanceShell"
 import { PartnerShell } from "@/components/layout/PartnerShell"
 import { Dashboard } from "@/pages/Dashboard"
@@ -26,6 +28,8 @@ import { PartnerMarketingAssets } from "@/pages/partner/PartnerMarketingAssets"
 import { PartnerProfile } from "@/pages/partner/PartnerProfile"
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute"
 
+const ProductDetail = lazy(() => import("@/pages/ProductDetail").then(module => ({ default: module.ProductDetail })))
+
 function App() {
   return (
     <Routes>
@@ -47,6 +51,14 @@ function App() {
           <Route path="commissions" element={<Commissions />} />
           <Route path="payouts" element={<Payouts />} />
           <Route path="products" element={<Products />} />
+          <Route
+            path="products/:id"
+            element={
+              <Suspense fallback={<div className="flex min-h-[400px] items-center justify-center p-6 text-sm text-muted-foreground"><Loader2 className="mr-2 size-4 animate-spin" />Loading product configuration...</div>}>
+                <ProductDetail />
+              </Suspense>
+            }
+          />
           <Route path="marketing-materials" element={<MarketingMaterials />} />
           <Route path="settings" element={<Settings />} />
         </Route>

@@ -21,6 +21,11 @@ Route::middleware('web')->group(function () {
     Route::get('/dashboard/summary', [DashboardController::class, 'summary'])->middleware('auth');
 
     Route::apiResource('products', ProductController::class)->middleware(['auth', 'admin']);
+    Route::put('products/{product}/affiliate-settings', [ProductController::class, 'updateAffiliateSettings'])->middleware(['auth', 'admin']);
+    Route::get('products/{product}/landing-pages', [ProductController::class, 'landingPages'])->middleware(['auth', 'admin']);
+    Route::post('products/{product}/landing-pages', [ProductController::class, 'storeLandingPage'])->middleware(['auth', 'admin']);
+    Route::put('products/{product}/landing-pages/{landingPage}', [ProductController::class, 'updateLandingPage'])->middleware(['auth', 'admin']);
+    Route::post('products/{product}/landing-pages/{landingPage}/make-default', [ProductController::class, 'makeLandingPageDefault'])->middleware(['auth', 'admin']);
 
     Route::apiResource('marketing-assets', MarketingAssetController::class)->middleware(['auth', 'admin']);
 

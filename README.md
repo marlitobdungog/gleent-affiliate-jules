@@ -37,6 +37,14 @@ docker compose exec backend php artisan test
 docker compose down
 ```
 
+### Product configuration
+
+Administrators can open a product from `/admin/products` and configure General, Affiliate Links, Landing Pages, and Commissions. Product configuration is protected by the existing admin middleware. The product website and its landing-page destinations must use HTTPS and the same host; the active default landing page is the canonical affiliate destination.
+
+The configuration API extends `/api/products/{id}` with product affiliate settings and landing pages. Apply the additive migrations with `php artisan migrate` (or rebuild the Docker stack, which migrates on startup). Product commission defaults are used for newly approved partner applications; existing partner rates and previously recorded commission snapshots are preserved.
+
+This app does not currently issue opaque affiliate tokens or resolve managed redirects, log link clicks, or receive authoritative purchase webhooks. Link previews are labeled examples, and choosing Gleent Redirect does not create a working share link. Conversion attribution remains dependent on a future trusted integration with the product site.
+
 ### Deploy to Cloud Run
 
 `deploy.sh` builds and pushes the Linux/AMD64 backend image, deploys it, then builds and pushes the frontend image with the deployed backend URL as its private Nginx proxy target. It then deploys the frontend. Docker with Buildx and `gcloud` authentication for Artifact Registry are required.

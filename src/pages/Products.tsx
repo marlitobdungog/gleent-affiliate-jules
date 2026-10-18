@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react"
+import { Link } from "react-router-dom"
 import { Search, Plus, MoreHorizontal, Pencil, Trash2 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { StatusBadge } from "@/components/shared/StatusBadge"
 import { productsApi } from "@/services/api"
-import { formatCurrency } from "@/lib/format"
+import { formatCurrencyPrecise } from "@/lib/format"
+import { productStatusConfig } from "@/lib/statusConfig"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -134,11 +136,6 @@ export function Products() {
     p.slug.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
-  const productStatusConfig: any = {
-    active: { label: "Active", variant: "success" },
-    inactive: { label: "Inactive", variant: "secondary" },
-  }
-
   return (
     <div className="p-6 space-y-6 max-w-screen-2xl">
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
@@ -189,17 +186,23 @@ export function Products() {
                   {filteredProducts.map((product) => (
                     <tr key={product.id} className="border-b border-border last:border-0 hover:bg-muted/40 transition-colors">
                       <td className="px-6 py-3">
-                        <div className="font-medium text-foreground">{product.name}</div>
+                        <Link
+                          to={`/admin/products/${product.id}`}
+                          className="font-medium text-foreground hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+                          aria-label={`Configure ${product.name}`}
+                        >
+                          {product.name}
+                        </Link>
                         <div className="text-xs text-muted-foreground truncate max-w-[200px]">{product.description}</div>
                       </td>
                       <td className="px-4 py-3 text-muted-foreground font-mono text-xs">{product.slug}</td>
                       <td className="px-4 py-3">
-                        <StatusBadge status={product.status} config={productStatusConfig} />
+                        <StatusBadge status={product.status === "active" ? "Active" : "Inactive"} config={productStatusConfig} />
                       </td>
                       <td className="px-4 py-3 text-foreground">
                         {product.default_commission_type === 'percentage'
                           ? `${product.default_commission_rate}%`
-                          : formatCurrency(product.default_commission_rate)}
+                          : formatCurrencyPrecise(Number(product.default_commission_rate))}
                       </td>
                       <td className="px-4 py-3 text-muted-foreground">
                         {new Date(product.created_at).toLocaleDateString()}
@@ -255,9 +258,11 @@ export function Products() {
                 <Input
                   id="slug"
                   value={formData.slug}
+                  disabled={isEditModalOpen}
                   onChange={e => setFormData({...formData, slug: e.target.value})}
                   required
                 />
+                {isEditModalOpen && <p className="text-xs text-muted-foreground">Slug is fixed after creation.</p>}
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="description">Description</Label>

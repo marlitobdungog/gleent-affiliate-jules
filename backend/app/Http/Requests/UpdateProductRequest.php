@@ -2,8 +2,10 @@
 
 namespace App\Http\Requests;
 
+use App\Rules\SecureHttpsUrl;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class UpdateProductRequest extends FormRequest
 {
@@ -18,17 +20,58 @@ class UpdateProductRequest extends FormRequest
 
         return [
             'name' => 'sometimes|required|string|max:255',
-            'slug' => [
-                'sometimes',
-                'required',
-                'string',
-                'max:255',
-                Rule::unique('products', 'slug')->ignore($product?->id),
-            ],
+            'slug' => ['sometimes', 'required', 'string', Rule::in([$product?->slug])],
             'description' => 'nullable|string',
+            'website_url' => ['sometimes', 'nullable', 'string', 'max:2048', new SecureHttpsUrl],
             'status' => 'sometimes|required|in:active,inactive',
             'default_commission_type' => 'sometimes|required|in:percentage,fixed',
-            'default_commission_rate' => 'sometimes|required|numeric|min:0',
+            'default_commission_rate' => [
+                'sometimes', 'required', 'numeric', 'min:0',
+                Rule::when(($this->input('default_commission_type') ?? $product?->default_commission_type) === 'percentage', ['max:100']),
+            ],
         ];
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator): void {
+            $product = $this->route('product');
+            $commissionType = $this->input('default_commission_type', $product->default_commission_type);
+            $commissionRate = $this->input('default_commission_rate', $product->default_commission_rate);
+
+            if ($this->exists('default_commission_type')
+                && $commissionType !== $product->default_commission_type
+                && ! $this->exists('default_commission_rate')) {
+                $validator->errors()->add('default_commission_rate', 'Provide a rate when changing the commission type.');
+            }
+
+            if ($commissionType === 'percentage' && is_numeric($commissionRate) && (float) $commissionRate > 100) {
+                $validator->errors()->add('default_commission_rate', 'Percentage commissions cannot exceed 100.');
+            }
+
+            if (! $this->exists('website_url')) {
+                return;
+            }
+
+            $websiteUrl = $this->input('website_url');
+
+            if (! $websiteUrl) {
+                if ($product->landingPages()->where('is_active', true)->exists()) {
+                    $validator->errors()->add('website_url', 'Set a new product website before clearing the website while active landing pages exist.');
+                }
+
+                return;
+            }
+
+            $websiteHost = strtolower(parse_url($websiteUrl, PHP_URL_HOST) ?: '');
+
+            foreach ($product->landingPages()->where('is_active', true)->get() as $page) {
+                $pageHost = strtolower(parse_url($page->destination_url, PHP_URL_HOST) ?: '');
+                if ($pageHost !== $websiteHost) {
+                    $validator->errors()->add('website_url', 'Update or archive active landing pages before changing the product website host.');
+                    break;
+                }
+            }
+        });
     }
 }

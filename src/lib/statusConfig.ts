@@ -9,6 +9,11 @@ import type {
 
 type StatusStyle = string
 
+export const productStatusConfig: Record<"Active" | "Inactive", StatusStyle> = {
+  Active: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800",
+  Inactive: "bg-gray-50 text-gray-600 border-gray-200 dark:bg-gray-900 dark:text-gray-400 dark:border-gray-700",
+}
+
 export const applicationStatusConfig: Record<ApplicationStatus, StatusStyle> = {
   Submitted:
     "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800",

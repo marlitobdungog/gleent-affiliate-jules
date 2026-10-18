@@ -110,8 +110,13 @@ class ApplicationService
                 'auth_service_tenant_id' => $application->auth_service_tenant_id,
             ]);
 
-            $defaultType = Setting::where('key', 'default_commission_type')->value('value') ?? 'percentage';
-            $defaultRate = Setting::where('key', 'default_commission_rate')->value('value') ?? 10;
+            $targetProduct = $application->target_product_id ? Product::find($application->target_product_id) : null;
+            $defaultType = $targetProduct?->default_commission_type
+                ?? Setting::where('key', 'default_commission_type')->value('value')
+                ?? 'percentage';
+            $defaultRate = $targetProduct?->default_commission_rate
+                ?? Setting::where('key', 'default_commission_rate')->value('value')
+                ?? 10;
 
             $partner = $this->partnerService->createPartner([
                 'user_id' => $user->id,

@@ -232,8 +232,8 @@ class PartnerPortalService
             : ($commission->product?->name ?? 'Commission');
 
         $rate = $commission->commission_type === 'percentage'
-            ? number_format((float) $commission->commission_rate, 0).'%'
-            : '$'.number_format((float) $commission->commission_rate, 2);
+            ? rtrim(rtrim(number_format((float) $commission->commission_rate, 2, '.', ''), '0'), '.').'%'
+            : '₱'.number_format((float) $commission->commission_rate, 2);
 
         return [
             'id' => 'COM-'.str_pad((string) $commission->id, 4, '0', STR_PAD_LEFT),

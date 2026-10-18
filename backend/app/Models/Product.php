@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Product extends Model
@@ -16,6 +17,7 @@ class Product extends Model
         'name',
         'slug',
         'description',
+        'website_url',
         'status',
         'default_commission_type',
         'default_commission_rate',
@@ -44,5 +46,20 @@ class Product extends Model
     public function marketingAssets(): BelongsToMany
     {
         return $this->belongsToMany(MarketingAsset::class);
+    }
+
+    public function affiliateSettings(): HasOne
+    {
+        return $this->hasOne(ProductAffiliateSetting::class);
+    }
+
+    public function landingPages(): HasMany
+    {
+        return $this->hasMany(ProductLandingPage::class);
+    }
+
+    public function configurationAudits(): HasMany
+    {
+        return $this->hasMany(ProductConfigurationAudit::class);
     }
 }

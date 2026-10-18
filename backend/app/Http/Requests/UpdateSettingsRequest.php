@@ -17,6 +17,7 @@ class UpdateSettingsRequest extends FormRequest
             'default_partner_link_domain' => 'sometimes|required|url',
             'default_commission_type' => 'sometimes|required|in:percentage,fixed',
             'default_commission_rate' => 'sometimes|required|numeric|min:0',
+            'default_attribution_window_days' => 'sometimes|required|integer|min:1|max:3650',
             'minimum_payout_amount' => 'sometimes|required|numeric|min:0',
             'affiliate_program_status' => 'sometimes|required|in:active,inactive',
         ];
