@@ -5,7 +5,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT_DIR"
 
 # Hardcode the default image tag to deploy here.
-DEPLOY_TAG="${DEPLOY_TAG:-v1.3.3}"
+DEPLOY_TAG="${DEPLOY_TAG:-v1.3.4}"
 
 CONFIG_FILE="${DEPLOY_ENV_FILE:-deploy.env}"
 load_env_file() {

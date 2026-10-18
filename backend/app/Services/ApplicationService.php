@@ -75,12 +75,6 @@ class ApplicationService
             ]);
         }
 
-        if (User::where('email', $application->email)->exists()) {
-            throw ValidationException::withMessages([
-                'email' => ['A user account with this email already exists.'],
-            ]);
-        }
-
         if (! $application->account_user_id || ! $application->auth_service_user_id || ! $application->auth_service_tenant_id) {
             throw ValidationException::withMessages([
                 'application' => ['This application is not linked to a verified Gleent Account. Ask the applicant to submit again after signing in.'],
@@ -88,9 +82,25 @@ class ApplicationService
         }
 
         return DB::transaction(function () use ($application) {
+            $user = User::where('email', $application->email)->first();
+
+            if ($user && ((string) $user->account_user_id !== (string) $application->account_user_id
+                || (string) $user->auth_service_user_id !== (string) $application->auth_service_user_id
+                || (string) $user->auth_service_tenant_id !== (string) $application->auth_service_tenant_id)) {
+                throw ValidationException::withMessages([
+                    'email' => ['A user account with this email already exists.'],
+                ]);
+            }
+
+            if ($user && ($user->role !== 'partner' || $user->partner()->exists())) {
+                throw ValidationException::withMessages([
+                    'email' => ['This Gleent Account is already linked to an Affiliate account.'],
+                ]);
+            }
+
             $application->update(['status' => 'approved']);
 
-            $user = User::create([
+            $user ??= User::create([
                 'name' => $application->name,
                 'email' => $application->email,
                 'password' => null,
