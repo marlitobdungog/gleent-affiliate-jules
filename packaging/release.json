@@ -1,9 +1,9 @@
 {
   "version": "v1.4.0",
   "images": {
-    "API": "asia-southeast1-docker.pkg.dev/myassistant-440206/docker-repo/gleent-affiliate-backend:v1.3.0",
-    "WEB": "asia-southeast1-docker.pkg.dev/myassistant-440206/docker-repo/gleent-affiliate-frontend:v1.3.0",
-    "PROXY": "asia-southeast1-docker.pkg.dev/myassistant-440206/docker-repo/gleent-affiliate-web:v1.3.0",
+    "API": "asia-southeast1-docker.pkg.dev/myassistant-440206/docker-repo/gleent-affiliate-backend:v1.4.0",
+    "WEB": "asia-southeast1-docker.pkg.dev/myassistant-440206/docker-repo/gleent-affiliate-frontend:v1.4.0",
+    "PROXY": "asia-southeast1-docker.pkg.dev/myassistant-440206/docker-repo/gleent-affiliate-web:v1.4.0",
     "DB": "mysql:8.4"
   }
 }
