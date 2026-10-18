@@ -37,7 +37,19 @@ docker compose exec backend php artisan test
 docker compose down
 ```
 
-### Build deployment images
+### Deploy to Cloud Run
+
+`deploy.sh` builds and pushes the Linux/AMD64 backend image, deploys it, then builds and pushes the frontend image with the deployed backend URL as its private Nginx proxy target. It then deploys the frontend. Docker with Buildx and `gcloud` authentication for Artifact Registry are required.
+
+Cloud Run settings are read from the ignored root `deploy.env`; start from [deploy.env.example](deploy.env.example). Set the production `AUTH_SERVICE_URL` and browser URL, internal API key, both OAuth client IDs and secrets, and the callback URL `https://affiliate.gleent.com/api/sso/callback`. The root `.env` remains for local Docker Compose settings and is not loaded by `deploy.sh`.
+
+```bash
+./deploy.sh --tag v1.3.0
+```
+
+To deploy already-built images, pass `--backend-image` and `--frontend-image`; those images are not rebuilt.
+
+### Build deployment images manually
 
 ```bash
 TAG=v1 make build      # Linux

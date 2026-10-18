@@ -11,14 +11,14 @@ if [[ -f "$CONFIG_FILE" ]]; then
 fi
 
 # Hardcode the default image tag to deploy here.
-DEPLOY_TAG="${DEPLOY_TAG:-v1.2.0}"
+DEPLOY_TAG="${DEPLOY_TAG:-v1.3.1}"
 
 usage() {
   cat <<'EOF'
 Usage: ./deploy.sh [options]
 
 Options:
-  --tag TAG                 Deploy images built with TAG.
+  --tag TAG                 Build and deploy images with TAG.
   --backend-image IMAGE     Deploy this exact backend image.
   --frontend-image IMAGE    Deploy this exact frontend image.
   -h, --help               Show this help.
@@ -91,8 +91,21 @@ DB_PORT="${DB_PORT:-3310}"
 DB_DATABASE="${DB_DATABASE:-}"
 DB_USERNAME="${DB_USERNAME:-}"
 DB_PASSWORD="${DB_PASSWORD:-}"
-APP_URL="${APP_URL:-https://affiliate.sprinthrapis.com}"
 FRONTEND_ORIGIN="${FRONTEND_ORIGIN:-https://affiliate.gleent.com}"
+APP_URL="${APP_URL:-$FRONTEND_ORIGIN}"
+AUTH_SERVICE_URL="${AUTH_SERVICE_URL:-}"
+AUTH_SERVICE_BROWSER_URL="${AUTH_SERVICE_BROWSER_URL:-$AUTH_SERVICE_URL}"
+AUTH_SERVICE_INTERNAL_API_KEY="${AUTH_SERVICE_INTERNAL_API_KEY:-}"
+AUTH_SERVICE_AFFILIATE_CLIENT_ID="${AUTH_SERVICE_AFFILIATE_CLIENT_ID:-}"
+AUTH_SERVICE_AFFILIATE_CLIENT_SECRET="${AUTH_SERVICE_AFFILIATE_CLIENT_SECRET:-}"
+AUTH_SERVICE_AFFILIATE_ONBOARDING_CLIENT_ID="${AUTH_SERVICE_AFFILIATE_ONBOARDING_CLIENT_ID:-}"
+AUTH_SERVICE_AFFILIATE_ONBOARDING_CLIENT_SECRET="${AUTH_SERVICE_AFFILIATE_ONBOARDING_CLIENT_SECRET:-}"
+AUTH_SERVICE_AFFILIATE_CALLBACK_URL="${AUTH_SERVICE_AFFILIATE_CALLBACK_URL:-${FRONTEND_ORIGIN%/}/api/sso/callback}"
+AUTH_SERVICE_AFFILIATE_APPLICATION_CODE="${AUTH_SERVICE_AFFILIATE_APPLICATION_CODE:-affiliate}"
+AUTH_SERVICE_AFFILIATE_ONBOARDING_APPLICATION_CODE="${AUTH_SERVICE_AFFILIATE_ONBOARDING_APPLICATION_CODE:-affiliate-onboarding}"
+AUTH_SERVICE_TENANT_SLUG="${AUTH_SERVICE_TENANT_SLUG:-gleent}"
+AUTH_SERVICE_CONNECT_TIMEOUT_SECONDS="${AUTH_SERVICE_CONNECT_TIMEOUT_SECONDS:-3}"
+AUTH_SERVICE_TIMEOUT_SECONDS="${AUTH_SERVICE_TIMEOUT_SECONDS:-10}"
 LEGACY_FRONTEND_ORIGIN="${LEGACY_FRONTEND_ORIGIN:-https://gleent-affiliate-frontend-1083135128051.asia-southeast1.run.app}"
 ALT_FRONTEND_ORIGIN="${ALT_FRONTEND_ORIGIN:-https://gleent-affiliate-frontend-lijnomv2zq-as.a.run.app}"
 FRONTEND_HOST="${FRONTEND_ORIGIN#http://}"
@@ -106,7 +119,7 @@ if [[ -z "$APP_KEY" && -f backend/.env ]]; then
   APP_KEY="$(grep -E '^APP_KEY=' backend/.env | head -n 1 | cut -d= -f2-)"
 fi
 
-for required_var in APP_KEY DB_HOST DB_DATABASE DB_USERNAME DB_PASSWORD; do
+for required_var in APP_KEY DB_HOST DB_DATABASE DB_USERNAME DB_PASSWORD AUTH_SERVICE_URL AUTH_SERVICE_BROWSER_URL AUTH_SERVICE_INTERNAL_API_KEY AUTH_SERVICE_AFFILIATE_CLIENT_ID AUTH_SERVICE_AFFILIATE_CLIENT_SECRET AUTH_SERVICE_AFFILIATE_ONBOARDING_CLIENT_ID AUTH_SERVICE_AFFILIATE_ONBOARDING_CLIENT_SECRET; do
   if [[ -z "${!required_var}" ]]; then
     echo "Set $required_var before running deploy.sh." >&2
     exit 1
@@ -116,12 +129,37 @@ done
 TAG="${CLI_TAG:-${IMAGE_TAG:-${TAG:-$DEPLOY_TAG}}}"
 AR_HOST="${REGION}-docker.pkg.dev"
 IMAGE_PREFIX="${AR_HOST}/${PROJECT_ID}/${REPOSITORY}"
-BACKEND_IMAGE="${CLI_BACKEND_IMAGE:-${BACKEND_IMAGE:-${IMAGE_PREFIX}/${BACKEND_SERVICE}:${TAG}}}"
-FRONTEND_IMAGE="${CLI_FRONTEND_IMAGE:-${FRONTEND_IMAGE:-${IMAGE_PREFIX}/${FRONTEND_SERVICE}:${TAG}}}"
+BACKEND_IMAGE_OVERRIDE="${CLI_BACKEND_IMAGE:-${BACKEND_IMAGE:-}}"
+FRONTEND_IMAGE_OVERRIDE="${CLI_FRONTEND_IMAGE:-${FRONTEND_IMAGE:-}}"
+BACKEND_IMAGE="${BACKEND_IMAGE_OVERRIDE:-${IMAGE_PREFIX}/${BACKEND_SERVICE}:${TAG}}"
+FRONTEND_IMAGE="${FRONTEND_IMAGE_OVERRIDE:-${IMAGE_PREFIX}/${FRONTEND_SERVICE}:${TAG}}"
+BUILD_BACKEND_IMAGE=true
+BUILD_FRONTEND_IMAGE=true
+[[ -z "$BACKEND_IMAGE_OVERRIDE" ]] || BUILD_BACKEND_IMAGE=false
+[[ -z "$FRONTEND_IMAGE_OVERRIDE" ]] || BUILD_FRONTEND_IMAGE=false
 
 echo "Using project $PROJECT_ID in region $REGION..."
 echo "Backend image:  $BACKEND_IMAGE"
 echo "Frontend image: $FRONTEND_IMAGE"
+
+if [[ "$BUILD_BACKEND_IMAGE" == true || "$BUILD_FRONTEND_IMAGE" == true ]]; then
+  command -v docker >/dev/null 2>&1 || {
+    echo "docker is required to build deployment images. Use --backend-image and --frontend-image to deploy existing images." >&2
+    exit 1
+  }
+  docker buildx version >/dev/null
+  gcloud auth configure-docker "$AR_HOST" --quiet
+fi
+
+if [[ "$BUILD_BACKEND_IMAGE" == true ]]; then
+  echo "Building and pushing backend image..."
+  docker buildx build \
+    --platform linux/amd64 \
+    --file backend/docker/php/Dockerfile \
+    --tag "$BACKEND_IMAGE" \
+    --push \
+    backend
+fi
 
 BACKEND_ENV_FILE="$(mktemp "${TMPDIR:-/tmp}/gleent-affiliate-backend-env.XXXXXX")"
 BACKEND_ENV_YAML="$(mktemp "${TMPDIR:-/tmp}/gleent-affiliate-backend-env-yaml.XXXXXX")"
@@ -145,6 +183,19 @@ SESSION_SAME_SITE=none
 SANCTUM_STATEFUL_DOMAINS=${FRONTEND_HOST},${LEGACY_FRONTEND_HOST},${ALT_FRONTEND_HOST},localhost,localhost:5173,localhost:8089,127.0.0.1,127.0.0.1:5173,127.0.0.1:8089
 CORS_ALLOWED_ORIGINS=${FRONTEND_ORIGIN},${LEGACY_FRONTEND_ORIGIN},${ALT_FRONTEND_ORIGIN},http://localhost:5173,http://localhost:8089
 CORS_ALLOWED_ORIGINS_PATTERNS=#^https://.*\\.a\\.run\\.app$#,#^http://localhost(:\\d+)?$#
+AUTH_SERVICE_URL=$AUTH_SERVICE_URL
+AUTH_SERVICE_BROWSER_URL=$AUTH_SERVICE_BROWSER_URL
+AUTH_SERVICE_INTERNAL_API_KEY=$AUTH_SERVICE_INTERNAL_API_KEY
+AUTH_SERVICE_AFFILIATE_CLIENT_ID=$AUTH_SERVICE_AFFILIATE_CLIENT_ID
+AUTH_SERVICE_AFFILIATE_CLIENT_SECRET=$AUTH_SERVICE_AFFILIATE_CLIENT_SECRET
+AUTH_SERVICE_AFFILIATE_ONBOARDING_CLIENT_ID=$AUTH_SERVICE_AFFILIATE_ONBOARDING_CLIENT_ID
+AUTH_SERVICE_AFFILIATE_ONBOARDING_CLIENT_SECRET=$AUTH_SERVICE_AFFILIATE_ONBOARDING_CLIENT_SECRET
+AUTH_SERVICE_AFFILIATE_CALLBACK_URL=$AUTH_SERVICE_AFFILIATE_CALLBACK_URL
+AUTH_SERVICE_AFFILIATE_APPLICATION_CODE=$AUTH_SERVICE_AFFILIATE_APPLICATION_CODE
+AUTH_SERVICE_AFFILIATE_ONBOARDING_APPLICATION_CODE=$AUTH_SERVICE_AFFILIATE_ONBOARDING_APPLICATION_CODE
+AUTH_SERVICE_TENANT_SLUG=$AUTH_SERVICE_TENANT_SLUG
+AUTH_SERVICE_CONNECT_TIMEOUT_SECONDS=$AUTH_SERVICE_CONNECT_TIMEOUT_SECONDS
+AUTH_SERVICE_TIMEOUT_SECONDS=$AUTH_SERVICE_TIMEOUT_SECONDS
 LOG_LEVEL=info
 EOF
 
@@ -178,38 +229,7 @@ BACKEND_URL="$(gcloud run services describe "$BACKEND_SERVICE" \
   --region "$REGION" \
   --format='value(status.url)')"
 
-# Normalize to numeric format for consistency
-if [[ "$BACKEND_URL" == *".a.run.app" ]]; then
-  BACKEND_URL="https://gleent-affiliate-backend-1083135128051.${REGION}.run.app"
-fi
-
 echo "Backend URL: $BACKEND_URL"
-cat > "$BACKEND_ENV_YAML" <<'EOF'
-APP_URL: "$APP_URL"
-FRONTEND_URL: "$FRONTEND_ORIGIN"
-APP_ENV: "production"
-APP_DEBUG: "false"
-APP_KEY: "$APP_KEY"
-DB_CONNECTION: "mysql"
-DB_HOST: "$DB_HOST"
-DB_PORT: "$DB_PORT"
-DB_DATABASE: "$DB_DATABASE"
-DB_USERNAME: "$DB_USERNAME"
-DB_PASSWORD: "$DB_PASSWORD"
-SESSION_DRIVER: "database"
-SESSION_SECURE_COOKIE: "true"
-SESSION_SAME_SITE: "none"
-SANCTUM_STATEFUL_DOMAINS: "$FRONTEND_HOST,$LEGACY_FRONTEND_HOST,$ALT_FRONTEND_HOST,localhost,localhost:5173,localhost:8089,127.0.0.1,127.0.0.1:5173,127.0.0.1:8089"
-CORS_ALLOWED_ORIGINS: "$FRONTEND_ORIGIN,$LEGACY_FRONTEND_ORIGIN,$ALT_FRONTEND_ORIGIN,http://localhost:5173,http://localhost:8089"
-CORS_ALLOWED_ORIGINS_PATTERNS: "#^https://.*\\.a\\.run\\.app$#,#^http://localhost(:\\d+)?$#"
-LOG_LEVEL: "info"
-EOF
-sed -i.bak 's|\$APP_URL|'"$APP_URL"'|g; s|\$FRONTEND_ORIGIN|'"$FRONTEND_ORIGIN"'|g; s|\$FRONTEND_HOST|'"$FRONTEND_HOST"'|g; s|\$LEGACY_FRONTEND_ORIGIN|'"$LEGACY_FRONTEND_ORIGIN"'|g; s|\$LEGACY_FRONTEND_HOST|'"$LEGACY_FRONTEND_HOST"'|g; s|\$ALT_FRONTEND_ORIGIN|'"$ALT_FRONTEND_ORIGIN"'|g; s|\$ALT_FRONTEND_HOST|'"$ALT_FRONTEND_HOST"'|g; s|\$APP_KEY|'"${APP_KEY//|\\|}"'|g; s|\$DB_HOST|'"$DB_HOST"'|g; s|\$DB_PORT|'"$DB_PORT"'|g; s|\$DB_DATABASE|'"$DB_DATABASE"'|g; s|\$DB_USERNAME|'"$DB_USERNAME"'|g; s|\$DB_PASSWORD|'"${DB_PASSWORD//|\\|}"'|g' "$BACKEND_ENV_YAML"
-rm -f "$BACKEND_ENV_YAML.bak"
-gcloud run services update "$BACKEND_SERVICE" \
-  --project "$PROJECT_ID" \
-  --region "$REGION" \
-  --env-vars-file="$BACKEND_ENV_YAML" >/dev/null
 
 MIGRATION_ENV_FILE="$(mktemp "${TMPDIR:-/tmp}/gleent-affiliate-migrate-env.XXXXXX")"
 MIGRATION_ENV_YAML="$(mktemp "${TMPDIR:-/tmp}/gleent-affiliate-migrate-env-yaml.XXXXXX")"
@@ -218,7 +238,7 @@ trap 'rm -f "$BACKEND_ENV_FILE" "$BACKEND_ENV_YAML" "$MIGRATION_ENV_FILE" "$MIGR
 cat > "$MIGRATION_ENV_FILE" <<EOF
 APP_ENV=production
 APP_DEBUG=false
-APP_URL=$BACKEND_URL
+APP_URL=$FRONTEND_ORIGIN
 APP_KEY=$APP_KEY
 DB_CONNECTION=mysql
 DB_HOST=$DB_HOST
@@ -256,6 +276,18 @@ gcloud run jobs deploy "${BACKEND_SERVICE}-migrate" \
   --env-vars-file="$MIGRATION_ENV_YAML" \
   --execute-now \
   --wait >/dev/null
+
+if [[ "$BUILD_FRONTEND_IMAGE" == true ]]; then
+  echo "Building and pushing frontend image..."
+  docker buildx build \
+    --platform linux/amd64 \
+    --build-arg VITE_API_BASE_URL="" \
+    --build-arg BACKEND_URL="$BACKEND_URL" \
+    --file docker/frontend/Dockerfile \
+    --tag "$FRONTEND_IMAGE" \
+    --push \
+    .
+fi
 
 echo "Deploying frontend service..."
 gcloud run deploy "$FRONTEND_SERVICE" \
