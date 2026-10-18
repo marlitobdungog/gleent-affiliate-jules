@@ -23,8 +23,9 @@ release_value() {
 
 API="$(release_value API)"
 WEB="$(release_value WEB)"
+PROXY="$(release_value PROXY)"
 DB="$(release_value DB)"
-export API WEB DB
+export API WEB PROXY DB
 
 if [ -f "$ENV_FILE" ]; then
   set -a
@@ -33,7 +34,7 @@ if [ -f "$ENV_FILE" ]; then
   set +a
 fi
 
-export API WEB DB
+export API WEB PROXY DB
 
 case "${1:-}" in
   up) shift; exec docker compose -f "$COMPOSE_FILE" up -d "$@" ;;

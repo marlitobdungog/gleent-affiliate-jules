@@ -19,6 +19,7 @@ services:
       DB_DATABASE: ${DB_DATABASE:-gleent_affiliate}
       DB_USERNAME: ${DB_USERNAME:-gleent_affiliate}
       DB_PASSWORD: ${DB_PASSWORD:-gleent_affiliate}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
       APP_URL: ${APP_URL:-http://localhost:8089}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:8089}
       SESSION_DRIVER: database
@@ -47,7 +48,7 @@ services:
       - gleent_affiliate
 
   web:
-    image: ${DB:?DB image is missing from release.json}
+    image: ${PROXY:?PROXY image is missing from release.json}
     restart: unless-stopped
     ports:
       - "${APP_PORT:-8089}:80"
