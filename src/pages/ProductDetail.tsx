@@ -243,7 +243,7 @@ export function ProductDetail() {
     event.preventDefault()
     if (!id) return
     if (savedGeneral.status === "active" && general.status === "inactive") {
-      const confirmed = window.confirm("Deactivate this product? It will be hidden from new partner referral submissions. Existing links outside this app will not be disabled because managed redirect tracking is not connected.")
+      const confirmed = window.confirm("Deactivate this product? It will be hidden from new partner referral submissions, and its Gleent short links will stop redirecting. Previously shared direct URLs may continue working.")
       if (!confirmed) return
     }
 
@@ -379,8 +379,8 @@ export function ProductDetail() {
     if (!id) return
     if (page.is_active) {
       const warning = page.is_default
-        ? "Archive this default landing page? Another active page will become the default, or the product will have no configured destination if this is the last active page."
-        : "Archive this landing page?"
+        ? "Archive this default landing page? Its short links will stop redirecting until it is reactivated. Another active page will become the default, or the product will have no configured destination if this is the last active page."
+        : "Archive this landing page? Its short links will stop redirecting until it is reactivated."
       if (!window.confirm(warning)) return
     }
     try {
@@ -509,7 +509,7 @@ export function ProductDetail() {
                     </Select>
                     {general.status === "inactive" && (
                       <p className="flex gap-2 text-xs text-amber-600 dark:text-amber-400">
-                        <AlertTriangle className="size-4 shrink-0" /> Existing external affiliate links are not disabled by this app.
+                        <AlertTriangle className="size-4 shrink-0" /> Gleent short links stop redirecting while this product is inactive. Previously shared direct URLs may continue working.
                       </p>
                     )}
                     {fieldError(generalErrors, "status") && <FieldError message={fieldError(generalErrors, "status")!} />}
@@ -542,7 +542,7 @@ export function ProductDetail() {
                     {fieldError(affiliateErrors, "base_destination_url") && <FieldError message={fieldError(affiliateErrors, "base_destination_url")!} />}
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="tracking-mode">Tracking Mode</Label>
+                    <Label htmlFor="tracking-mode">Legacy Link Mode</Label>
                     <Select value={affiliate.tracking_mode} onValueChange={(value: "redirect" | "direct") => setAffiliate({ ...affiliate, tracking_mode: value })}>
                       <SelectTrigger id="tracking-mode"><SelectValue /></SelectTrigger>
                       <SelectContent>
@@ -550,13 +550,7 @@ export function ProductDetail() {
                         <SelectItem value="direct">Direct Destination</SelectItem>
                       </SelectContent>
                     </Select>
-                    {affiliate.tracking_mode === "redirect" ? (
-                      <p className="flex gap-2 text-xs text-amber-600 dark:text-amber-400">
-                        <AlertTriangle className="size-4 shrink-0" /> Managed redirect tracking is not configured here. No shareable redirect link will be generated.
-                      </p>
-                    ) : (
-                      <p className="text-xs text-muted-foreground">Direct links pass a query parameter. The destination must recognize it and send authoritative conversion events to Gleent.</p>
-                    )}
+                    <p className="text-xs text-muted-foreground">Partners receive stable Gleent short links while short links are enabled. This setting controls the legacy link style used during rollback. The destination site should retain the partner code and validate the short-lived gclick handoff.</p>
                     {fieldError(affiliateErrors, "tracking_mode") && <FieldError message={fieldError(affiliateErrors, "tracking_mode")!} />}
                   </div>
                   <div className="grid gap-2 sm:max-w-sm">
@@ -603,22 +597,16 @@ export function ProductDetail() {
                   </div>
                 )}
                 <PreviewValue label="Resolved Destination" value={resolvedDestination || "No active landing page destination is configured."} />
-                {affiliate.tracking_mode === "direct" ? (
-                  <div className="space-y-2">
-                    <Label>Example Direct Affiliate Link</Label>
-                    <div className="flex gap-2">
-                      <Input readOnly value={resolvedDestination} className="font-mono text-xs" aria-label="Example direct affiliate link" />
-                      <Button type="button" variant="outline" size="icon" aria-label="Copy example link" disabled={!resolvedDestination} onClick={() => void copyPreview(resolvedDestination)}>
-                        <Copy className="size-4" />
-                      </Button>
-                    </div>
-                    <p className="text-xs text-muted-foreground">This preview adds {affiliate.referral_parameter || "ref"}={sampleCode}. A query parameter alone does not prove attribution.</p>
+                <div className="space-y-2">
+                  <Label>Example Destination URL</Label>
+                  <div className="flex gap-2">
+                    <Input readOnly value={resolvedDestination} className="font-mono text-xs" aria-label="Example destination URL with partner code" />
+                    <Button type="button" variant="outline" size="icon" aria-label="Copy example destination URL" disabled={!resolvedDestination} onClick={() => void copyPreview(resolvedDestination)}>
+                      <Copy className="size-4" />
+                    </Button>
                   </div>
-                ) : (
-                  <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm text-muted-foreground">
-                    Managed redirect preview is unavailable until Gleent's redirect domain and resolver are configured.
-                  </div>
-                )}
+                  <p className="text-xs text-muted-foreground">This destination preview adds {affiliate.referral_parameter || "ref"}={sampleCode}. Partner links are short URLs that also record clicks; this example is not an issued share link.</p>
+                </div>
                 {selectedPreviewPage && !selectedPreviewPage.is_default && (
                   <p className="text-xs text-muted-foreground">Previewing {selectedPreviewPage.name}. Its URL is not the product's default destination.</p>
                 )}

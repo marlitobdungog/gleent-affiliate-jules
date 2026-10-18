@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ProductLandingPage extends Model
 {
@@ -23,5 +24,10 @@ class ProductLandingPage extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
+    }
+
+    public function affiliateLinks(): HasMany
+    {
+        return $this->hasMany(ProductAffiliateLink::class, 'landing_page_id');
     }
 }

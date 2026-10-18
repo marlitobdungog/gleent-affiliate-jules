@@ -9,6 +9,7 @@ use App\Models\MarketingAsset;
 use App\Models\Partner;
 use App\Models\PartnerProductEligibility;
 use App\Models\Referral;
+use App\Services\AffiliateClickHandoffService;
 use App\Services\AffiliateLinkService;
 use App\Services\PartnerPortalService;
 use Illuminate\Http\JsonResponse;
@@ -187,9 +188,18 @@ class PartnerPortalController extends Controller
             ->header('Cache-Control', 'private, no-store');
     }
 
-    public function redirectAffiliateLink(string $token, AffiliateLinkService $service): RedirectResponse
+    public function redirectAffiliateShortLink(string $shortCode, AffiliateLinkService $service, AffiliateClickHandoffService $handoff): RedirectResponse
     {
-        $destination = $service->resolveRedirect($token);
+        $destination = $service->resolveShortRedirect($shortCode, $handoff);
+
+        return redirect()->away($destination, 302)
+            ->header('Cache-Control', 'private, no-store, max-age=0')
+            ->header('Referrer-Policy', 'no-referrer');
+    }
+
+    public function redirectAffiliateLink(string $token, AffiliateLinkService $service, AffiliateClickHandoffService $handoff): RedirectResponse
+    {
+        $destination = $service->resolveRedirect($token, $handoff);
 
         return redirect()->away($destination, 302)
             ->header('Cache-Control', 'private, no-store, max-age=0')

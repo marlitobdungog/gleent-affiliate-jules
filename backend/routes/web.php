@@ -2,11 +2,18 @@
 
 use App\Http\Controllers\Api\AffiliateSsoController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\PartnerPortalController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return view('welcome');
 });
+
+Route::get('/{shortCode}', [PartnerPortalController::class, 'redirectAffiliateShortLink'])
+    ->middleware('throttle:120,1')
+    ->withoutMiddleware('web')
+    ->where('shortCode', '[a-z0-9]{8}')
+    ->name('affiliate.short-link');
 
 Route::prefix('api')->middleware('web')->group(function () {
     Route::get('/admin/bootstrap-status', [AuthController::class, 'bootstrapStatus']);

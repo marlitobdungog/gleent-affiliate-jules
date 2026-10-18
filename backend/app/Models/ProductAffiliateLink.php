@@ -13,6 +13,7 @@ class ProductAffiliateLink extends Model
         'product_id',
         'landing_page_id',
         'token',
+        'short_code',
     ];
 
     public function partner(): BelongsTo

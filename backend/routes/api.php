@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AdminUserController;
+use App\Http\Controllers\Api\AffiliateClickHandoffController;
 use App\Http\Controllers\Api\ApplicationController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CommissionController;
@@ -14,6 +15,9 @@ use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\ReferralController;
 use App\Http\Controllers\Api\SettingController;
 use Illuminate\Support\Facades\Route;
+
+Route::post('affiliate/clicks/verify', [AffiliateClickHandoffController::class, 'verify'])
+    ->middleware('throttle:120,1');
 
 Route::middleware('web')->group(function () {
     Route::get('/me', [AuthController::class, 'me'])->middleware('auth');

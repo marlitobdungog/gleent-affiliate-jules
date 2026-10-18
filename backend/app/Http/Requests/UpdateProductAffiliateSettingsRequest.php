@@ -17,7 +17,7 @@ class UpdateProductAffiliateSettingsRequest extends FormRequest
     {
         return [
             'tracking_mode' => 'required|in:redirect,direct',
-            'referral_parameter' => ['required', 'string', 'max:100', 'regex:/^[A-Za-z][A-Za-z0-9_-]*$/'],
+            'referral_parameter' => ['required', 'string', 'max:100', 'regex:/^[A-Za-z][A-Za-z0-9_-]*$/', 'not_regex:/^gclick$/i'],
             'attribution_window_days' => 'nullable|integer|min:1|max:3650',
             'base_destination_url' => ['nullable', 'string', 'max:2048', new SecureHttpsUrl],
         ];

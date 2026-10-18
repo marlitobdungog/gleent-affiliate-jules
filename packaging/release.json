@@ -1,5 +1,5 @@
 {
-  "version": "v1.3.0",
+  "version": "v1.4.0",
   "images": {
     "API": "asia-southeast1-docker.pkg.dev/myassistant-440206/docker-repo/gleent-affiliate-backend:v1.3.0",
     "WEB": "asia-southeast1-docker.pkg.dev/myassistant-440206/docker-repo/gleent-affiliate-frontend:v1.3.0",

@@ -2,6 +2,14 @@
 
 return [
 
+    'affiliate' => [
+        'short_links_enabled' => env('AFFILIATE_SHORT_LINKS_ENABLED', true),
+        'short_link_base_url' => env('AFFILIATE_SHORT_LINK_BASE_URL', env('APP_URL', 'http://localhost')),
+        'click_token_ttl_minutes' => env('AFFILIATE_CLICK_TOKEN_TTL_MINUTES', 10),
+        'short_code_length' => 8,
+        'short_code_alphabet' => 'abcdefghjkmnpqrstuvwxyz23456789',
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Third Party Services

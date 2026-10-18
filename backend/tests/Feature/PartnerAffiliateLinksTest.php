@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Partner;
 use App\Models\PartnerProductEligibility;
 use App\Models\Product;
+use App\Models\ProductAffiliateLink;
 use App\Models\ProductAffiliateLinkClick;
 use App\Models\ProductAffiliateSetting;
 use App\Models\ProductLandingPage;
@@ -56,6 +57,7 @@ class PartnerAffiliateLinksTest extends TestCase
     {
         [$partnerUser, $partner] = $this->partner();
         $product = $this->product('Direct Product');
+        $product->update(['website_url' => 'https://direct.example']);
         $this->grant($partner, $product);
         $page = $this->landingPage($product, 'Recruitment', 'https://direct.example/jobs?source=campaign#demo', true);
         ProductAffiliateSetting::create([
@@ -69,10 +71,34 @@ class PartnerAffiliateLinksTest extends TestCase
             ->assertOk()
             ->assertJsonPath('product_id', $product->id)
             ->assertJsonPath('links.0.landing_page_id', $page->id)
-            ->assertJsonPath('links.0.share_url', 'https://direct.example/jobs?source=campaign&ref=PARTNER2026#demo')
+            ->assertJsonPath('links.0.available', true)
+            ->assertJsonPath('links.0.is_short_link', true)
             ->assertJsonPath('links.0.destination_url', $page->destination_url);
 
-        $this->assertDatabaseCount('product_affiliate_links', 0);
+        $first = $this->getJson('/api/partner/affiliate-links?product_id='.$product->id)->json('links.0.share_url');
+        $this->assertSame(
+            $first,
+            $this->getJson('/api/partner/affiliate-links?product_id='.$product->id)->json('links.0.share_url'),
+        );
+        $this->assertMatchesRegularExpression('~^http://localhost/[a-hjkmnp-z2-9]{8}$~', $first);
+        $this->assertDatabaseCount('product_affiliate_links', 1);
+
+        $shortCode = basename((string) parse_url($first, PHP_URL_PATH));
+        $page->update(['destination_url' => 'https://direct.example/new?source=updated']);
+        $response = $this->get('/'.$shortCode)
+            ->assertStatus(302)
+            ->assertHeader('Cache-Control', 'max-age=0, no-store, private');
+
+        parse_str((string) parse_url($response->headers->get('Location'), PHP_URL_QUERY), $query);
+        $this->assertSame('updated', $query['source']);
+        $this->assertSame('PARTNER2026', $query['ref']);
+        $this->assertNotEmpty($query['gclick']);
+
+        $this->postJson('/api/affiliate/clicks/verify', ['token' => $query['gclick']])
+            ->assertOk()
+            ->assertJsonPath('product_slug', $product->slug);
+
+        $this->assertDatabaseCount('product_affiliate_link_clicks', 1);
     }
 
     public function test_redirect_link_is_stable_tracks_visits_and_resolves_to_current_allowlisted_destination(): void
@@ -97,14 +123,20 @@ class PartnerAffiliateLinksTest extends TestCase
             ->json('links.0.share_url');
 
         $this->assertSame($first, $second);
+        $this->assertMatchesRegularExpression('~^http://localhost/[a-hjkmnp-z2-9]{8}$~', $first);
         $this->assertDatabaseCount('product_affiliate_links', 1);
 
         $page->update(['destination_url' => 'https://redirect.example/new?source=updated']);
-        $this->get(parse_url($first, PHP_URL_PATH))
-            ->assertRedirect('https://redirect.example/new?source=updated&ref=PARTNER2026')
+        $response = $this->get(parse_url($first, PHP_URL_PATH))
+            ->assertStatus(302)
             ->assertHeader('Cache-Control', 'max-age=0, no-store, private');
+        parse_str((string) parse_url($response->headers->get('Location'), PHP_URL_QUERY), $query);
+        $this->assertSame('updated', $query['source']);
+        $this->assertSame('PARTNER2026', $query['ref']);
+        $this->assertNotEmpty($query['gclick']);
 
         $this->assertSame(1, ProductAffiliateLinkClick::count());
+        $this->assertNotEmpty(ProductAffiliateLinkClick::first()?->click_id);
     }
 
     public function test_redirect_link_fails_closed_after_product_access_or_landing_page_is_disabled(): void
@@ -132,8 +164,68 @@ class PartnerAffiliateLinksTest extends TestCase
 
         $eligibility->update(['is_active' => true]);
         $page->update(['is_active' => false]);
+        $this->actingAs($partnerUser)
+            ->getJson('/api/partner/affiliate-links?product_id='.$product->id)
+            ->assertOk()
+            ->assertJsonPath('links.0.share_url', $shareUrl)
+            ->assertJsonPath('links.0.available', false)
+            ->assertJsonPath('links.0.status', 'inactive');
         $this->get($path)->assertNotFound();
         $this->assertSame(0, ProductAffiliateLinkClick::count());
+    }
+
+    public function test_legacy_redirect_token_still_resolves_after_short_links_are_enabled(): void
+    {
+        [$partnerUser, $partner] = $this->partner();
+        $product = $this->product('Legacy Redirect Product');
+        $product->update(['website_url' => 'https://legacy-redirect.example']);
+        $this->grant($partner, $product);
+        $this->landingPage($product, 'Main', 'https://legacy-redirect.example/start', true);
+        ProductAffiliateSetting::create([
+            'product_id' => $product->id,
+            'tracking_mode' => 'redirect',
+            'referral_parameter' => 'ref',
+        ]);
+
+        $this->actingAs($partnerUser)
+            ->getJson('/api/partner/affiliate-links?product_id='.$product->id)
+            ->assertOk();
+
+        $legacyToken = ProductAffiliateLink::query()->sole()->token;
+        $response = $this->get('/api/r/'.$legacyToken)->assertStatus(302);
+        parse_str((string) parse_url($response->headers->get('Location'), PHP_URL_QUERY), $query);
+
+        $this->assertSame('PARTNER2026', $query['ref']);
+        $this->assertNotEmpty($query['gclick']);
+        $this->assertSame(1, ProductAffiliateLinkClick::count());
+    }
+
+    public function test_click_handoff_rejects_tampered_and_expired_tokens(): void
+    {
+        [$partnerUser, $partner] = $this->partner();
+        $product = $this->product('Handoff Product');
+        $product->update(['website_url' => 'https://handoff.example']);
+        $this->grant($partner, $product);
+        $this->landingPage($product, 'Main', 'https://handoff.example/start', true);
+        ProductAffiliateSetting::create([
+            'product_id' => $product->id,
+            'tracking_mode' => 'direct',
+            'referral_parameter' => 'ref',
+        ]);
+
+        $shareUrl = $this->actingAs($partnerUser)
+            ->getJson('/api/partner/affiliate-links?product_id='.$product->id)
+            ->assertOk()
+            ->json('links.0.share_url');
+        $response = $this->get(parse_url($shareUrl, PHP_URL_PATH))->assertStatus(302);
+        parse_str((string) parse_url($response->headers->get('Location'), PHP_URL_QUERY), $query);
+        $validToken = $query['gclick'];
+        $tamperedToken = ($validToken[0] === 'a' ? 'b' : 'a').substr($validToken, 1);
+
+        $this->postJson('/api/affiliate/clicks/verify', ['token' => $tamperedToken])->assertNotFound();
+
+        $this->travel(11)->minutes();
+        $this->postJson('/api/affiliate/clicks/verify', ['token' => $validToken])->assertNotFound();
     }
 
     public function test_partner_cannot_generate_or_submit_for_an_unassigned_product(): void

@@ -11,6 +11,7 @@ class ProductAffiliateLinkClick extends Model
 
     protected $fillable = [
         'affiliate_link_id',
+        'click_id',
     ];
 
     public function affiliateLink(): BelongsTo

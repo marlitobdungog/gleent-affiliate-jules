@@ -106,6 +106,7 @@ export interface PartnerAffiliateLandingPage {
   name: string
   destination_url: string
   is_default: boolean
+  is_active: boolean
 }
 
 export interface PartnerAffiliateProduct {
@@ -133,6 +134,9 @@ export interface PartnerAffiliateLink {
   share_url: string
   destination_url: string
   is_default: boolean
+  available: boolean
+  status: "active" | "inactive"
+  is_short_link: boolean
   tracking_mode: "direct" | "redirect"
 }
 
