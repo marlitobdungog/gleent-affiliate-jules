@@ -68,9 +68,6 @@ export function PartnerTopbar() {
             <DropdownMenuItem onClick={() => navigate("/partner/profile")}>
               Profile
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => navigate("/partner/profile/change-password")}>
-              Change Password
-            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem className="text-destructive" onClick={handleLogout}>
               Sign Out

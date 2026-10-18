@@ -26,13 +26,12 @@ Route::middleware('web')->group(function () {
 
     Route::apiResource('applications', ApplicationController::class)->middleware(['auth', 'admin']);
     Route::post('applications/{application}/approve', [ApplicationController::class, 'approve'])->middleware(['auth', 'admin']);
-    Route::post('applications/{application}/activation-link', [ApplicationController::class, 'activationLink'])->middleware(['auth', 'admin']);
     Route::post('applications/{application}/reject', [ApplicationController::class, 'reject'])->middleware(['auth', 'admin']);
     Route::post('applications/{application}/needs-more-info', [ApplicationController::class, 'needsMoreInfo'])->middleware(['auth', 'admin']);
 
-    Route::apiResource('partners', PartnerController::class)->middleware('auth');
-    Route::post('partners/{partner}/activate', [PartnerController::class, 'activate'])->middleware('auth');
-    Route::post('partners/{partner}/suspend', [PartnerController::class, 'suspend'])->middleware('auth');
+    Route::apiResource('partners', PartnerController::class)->middleware(['auth', 'admin']);
+    Route::post('partners/{partner}/activate', [PartnerController::class, 'activate'])->middleware(['auth', 'admin']);
+    Route::post('partners/{partner}/suspend', [PartnerController::class, 'suspend'])->middleware(['auth', 'admin']);
 
     Route::apiResource('referrals', ReferralController::class)->middleware('auth');
 
@@ -58,7 +57,6 @@ Route::middleware('web')->group(function () {
     Route::middleware(['auth', 'partner'])->prefix('partner')->group(function () {
         Route::get('profile', [PartnerPortalController::class, 'profile']);
         Route::put('profile', [PartnerPortalController::class, 'updateProfile']);
-        Route::put('password', [PartnerPortalController::class, 'changePassword']);
         Route::get('dashboard', [PartnerPortalController::class, 'dashboard']);
         Route::get('referrals', [PartnerPortalController::class, 'referrals']);
         Route::post('referrals', [PartnerPortalController::class, 'storeReferral']);

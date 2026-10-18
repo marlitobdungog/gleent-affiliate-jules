@@ -7,18 +7,42 @@ use App\Models\Product;
 use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Password;
-use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class ApplicationService
 {
-    public function __construct(protected PartnerService $partnerService) {}
+    public function __construct(
+        protected PartnerService $partnerService,
+        protected AuthServiceClient $authService,
+    ) {}
 
     public function submit(array $data): Application
     {
-        return Application::create([
+        if (User::where('account_user_id', $data['account_user_id'])->exists()) {
+            throw ValidationException::withMessages([
+                'application' => ['This Gleent Account is already linked to an Affiliate account.'],
+            ]);
+        }
+
+        $pendingApplication = Application::where('email', $data['email'])
+            ->whereIn('status', ['submitted', 'under_review', 'needs_more_info'])
+            ->first();
+        if ($pendingApplication?->account_user_id
+            && (string) $pendingApplication->account_user_id !== (string) $data['account_user_id']) {
+            throw ValidationException::withMessages([
+                'application' => ['A pending application already exists for this email address and is linked to another Account.'],
+            ]);
+        }
+        if (Application::where('account_user_id', $data['account_user_id'])
+            ->whereIn('status', ['submitted', 'under_review', 'needs_more_info'])
+            ->when($pendingApplication, fn ($query) => $query->where('id', '<>', $pendingApplication->id))
+            ->exists()) {
+            throw ValidationException::withMessages([
+                'application' => ['A pending Affiliate application already exists for this Gleent Account.'],
+            ]);
+        }
+
+        $applicationData = [
             'name' => $data['name'],
             'email' => $data['email'],
             'phone' => $data['phone'] ?? null,
@@ -27,9 +51,20 @@ class ApplicationService
             'social_link' => $data['social_link'] ?? null,
             'promotion_plan' => $data['promotion_plan'] ?? null,
             'audience_description' => $data['audience_description'] ?? null,
+            'account_user_id' => $data['account_user_id'],
+            'auth_service_user_id' => $data['auth_service_user_id'],
+            'auth_service_tenant_id' => $data['auth_service_tenant_id'],
             'target_product_id' => $data['target_product_id'] ?? $this->defaultTargetProductId(),
             'status' => 'submitted',
-        ]);
+        ];
+
+        if ($pendingApplication) {
+            $pendingApplication->update($applicationData);
+
+            return $pendingApplication;
+        }
+
+        return Application::create($applicationData);
     }
 
     public function approve(Application $application): array
@@ -46,14 +81,23 @@ class ApplicationService
             ]);
         }
 
+        if (! $application->account_user_id || ! $application->auth_service_user_id || ! $application->auth_service_tenant_id) {
+            throw ValidationException::withMessages([
+                'application' => ['This application is not linked to a verified Gleent Account. Ask the applicant to submit again after signing in.'],
+            ]);
+        }
+
         return DB::transaction(function () use ($application) {
             $application->update(['status' => 'approved']);
 
             $user = User::create([
                 'name' => $application->name,
                 'email' => $application->email,
-                'password' => Hash::make(Str::random(64)),
+                'password' => null,
                 'role' => 'partner',
+                'account_user_id' => $application->account_user_id,
+                'auth_service_user_id' => $application->auth_service_user_id,
+                'auth_service_tenant_id' => $application->auth_service_tenant_id,
             ]);
 
             $defaultType = Setting::where('key', 'default_commission_type')->value('value') ?? 'percentage';
@@ -72,36 +116,16 @@ class ApplicationService
                 'approved_at' => now(),
             ]);
 
+            $this->authService->setAffiliateAccess(
+                (string) $user->auth_service_user_id,
+                (string) $user->auth_service_tenant_id,
+                true,
+            );
+
             return [
                 'partner' => $partner,
-                'activation_link' => $this->createActivationLink($user),
             ];
         });
-    }
-
-    public function createActivationLink(User $user): string
-    {
-        $token = Password::createToken($user);
-
-        return rtrim((string) config('app.frontend_url'), '/').'/partner/activate?'.http_build_query([
-            'email' => $user->email,
-            'token' => $token,
-        ]);
-    }
-
-    public function createActivationLinkFor(Application $application): string
-    {
-        $user = User::where('email', $application->email)
-            ->where('role', 'partner')
-            ->first();
-
-        if (! $user) {
-            throw ValidationException::withMessages([
-                'application' => ['No partner account exists for this application.'],
-            ]);
-        }
-
-        return $this->createActivationLink($user);
     }
 
     protected function defaultTargetProductId(): int

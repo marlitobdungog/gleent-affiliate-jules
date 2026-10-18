@@ -54,3 +54,14 @@ Set `TAG` in the Makefile to hardcode the build tag, and set `DEPLOY_TAG` in `de
 - Database: `gleent_affiliate`
 - Username: `gleent_affiliate`
 - Password: `gleent_affiliate`
+
+### Partner SSO setup
+
+Partner sign-in and application submission use Gleent Account through auth-service. Register two active auth-service applications and confidential OAuth clients, both with the exact redirect URI `http://localhost:8089/api/sso/callback` for local development:
+
+- `affiliate` — normal portal authorization; user access is granted when a partner is approved.
+- `affiliate-onboarding` — limited Account identity and application flow. Add the active scope `affiliate:apply` to this application.
+
+Put the generated client IDs/secrets and the auth-service internal API key in the environment used by Docker Compose (the project-root `.env`) using the `AUTH_SERVICE_*` names in [backend/.env.example](backend/.env.example). Set the same internal API key and matching Account SSO signing/public-key pair in Gleent Account and auth-service. In non-local environments, use the public HTTPS auth-service URL and register the exact HTTPS callback URL with both clients.
+
+For local OAuth, auth-service and Account must already have the Gleent Account SSO issuer, audience, authorization URL, and matching RS256 keys configured. After the variables are set, rebuild/restart the Affiliate backend so Laravel reloads its configuration, then visit `/partner/register` to sign in and apply. Approval grants the `affiliate` app-access record; suspending, deactivating, or deleting the partner revokes it.

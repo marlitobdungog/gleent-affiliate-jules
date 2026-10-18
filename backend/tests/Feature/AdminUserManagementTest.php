@@ -2,8 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Models\Application;
-use App\Models\Product;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -178,35 +176,14 @@ class AdminUserManagementTest extends TestCase
         $this->assertDatabaseMissing('users', ['email' => 'public-admin@example.com']);
     }
 
-    public function test_partner_registration_and_login_still_work(): void
+    public function test_partner_application_requires_account_sso_and_local_password_login_is_removed(): void
     {
-        $product = Product::create([
-            'name' => 'SprintHR',
-            'slug' => 'sprinthr',
-            'status' => 'active',
-            'default_commission_type' => 'percentage',
-            'default_commission_rate' => 10,
-        ]);
-
         $this->postJson('/api/partner/register', [
-            'name' => 'Partner Applicant',
-            'email' => 'partner@example.com',
             'company_name' => 'Partner Co',
-            'target_product_id' => $product->id,
-        ])->assertCreated();
-
-        $application = Application::where('email', 'partner@example.com')->firstOrFail();
-        $partner = User::factory()->create([
-            'email' => $application->email,
-            'password' => 'partner-password',
-            'role' => 'partner',
-        ]);
+        ])->assertUnauthorized();
 
         $this->postJson('/api/partner/login', [
-            'email' => $partner->email,
-            'password' => 'partner-password',
-        ])->assertOk()
-            ->assertJsonPath('user.role', 'partner');
+        ])->assertNotFound();
     }
 
     public function test_admin_login_still_works(): void

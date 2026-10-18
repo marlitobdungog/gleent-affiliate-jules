@@ -1,48 +1,61 @@
+import { useEffect, useState } from "react"
+import { Link, useNavigate, useSearchParams } from "react-router-dom"
+import { Handshake, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Handshake, Loader2 } from "lucide-react"
-import { useNavigate, Link } from "react-router-dom"
-import { useState } from "react"
 import { partnerAuthApi } from "@/services/api"
 import { useAuth } from "@/hooks/useAuth"
-import * as React from "react"
+
+interface OnboardingIdentity {
+  name: string | null
+  email: string
+}
 
 export function PartnerRegister() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const { user } = useAuth()
+  const [identity, setIdentity] = useState<OnboardingIdentity | null>(null)
+  const [loadingIdentity, setLoadingIdentity] = useState(true)
   const [loading, setLoading] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [formData, setFormData] = useState({ company_name: "", phone: "" })
 
-  React.useEffect(() => {
-    if (user?.role === "partner") {
-      navigate("/partner/dashboard")
-    } else if (user?.role === "admin") {
-      navigate("/admin/dashboard")
-    }
+  useEffect(() => {
+    if (user?.role === "partner") navigate("/partner/dashboard")
+    else if (user?.role === "admin") navigate("/admin/dashboard")
   }, [user, navigate])
 
-  const [error, setError] = useState<string | null>(null)
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    company_name: "",
-    phone: "",
-  })
+  useEffect(() => {
+    partnerAuthApi.onboarding()
+      .then((data: OnboardingIdentity) => setIdentity(data))
+      .catch(() => window.location.assign("/api/sso/start/apply"))
+      .finally(() => setLoadingIdentity(false))
+  }, [])
 
-  const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleRegister = async (event: React.FormEvent) => {
+    event.preventDefault()
     setLoading(true)
     setError(null)
     try {
       await partnerAuthApi.register(formData)
       setSubmitted(true)
     } catch (err: any) {
-      setError(err.message || "Failed to submit application")
+      setError(err?.errors?.application?.[0] ?? err?.message ?? "Failed to submit application")
     } finally {
       setLoading(false)
     }
+  }
+
+  if (loadingIdentity || !identity) {
+    return (
+      <div className="flex min-h-svh items-center justify-center bg-muted/40 p-6">
+        <Loader2 className="size-8 animate-spin text-primary" />
+      </div>
+    )
   }
 
   if (submitted) {
@@ -53,14 +66,11 @@ export function PartnerRegister() {
             <CardHeader>
               <CardTitle className="text-xl">Application submitted</CardTitle>
               <CardDescription>
-                Thank you for applying to the Gleent Affiliate program. We will review your
-                application and email you when a decision is made.
+                Thank you for applying to the Gleent Affiliate program. We’ll review your application and contact {identity.email} with a decision.
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Button asChild className="w-full">
-                <Link to="/partner/login">Back to login</Link>
-              </Button>
+              <Button asChild className="w-full"><Link to="/partner/login">Back to sign in</Link></Button>
             </CardContent>
           </Card>
         </div>
@@ -72,9 +82,7 @@ export function PartnerRegister() {
     <div className="flex min-h-svh flex-col items-center justify-center bg-muted/40 p-6 md:p-10">
       <div className="flex w-full max-w-sm flex-col gap-6">
         <div className="flex flex-col items-center gap-2">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <Handshake className="size-6" />
-          </div>
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground"><Handshake className="size-6" /></div>
           <div className="flex flex-col items-center">
             <span className="text-xl font-bold">Partner Portal</span>
             <span className="text-sm text-muted-foreground">Gleent Affiliate</span>
@@ -83,70 +91,37 @@ export function PartnerRegister() {
         <Card className="shadow-none">
           <CardHeader>
             <CardTitle className="text-xl">Apply to the program</CardTitle>
-            <CardDescription>
-              Submit your application to become an affiliate partner. Portal access is granted
-              after approval.
-            </CardDescription>
+            <CardDescription>Submit your application. Portal access is enabled after approval.</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleRegister} className="grid gap-6">
-              {error && (
-                <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-lg">
-                  {error}
+              {(error || searchParams.get("error")) && (
+                <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive" role="alert">
+                  {error ?? (searchParams.get("error") === "not_an_active_partner"
+                    ? "No active partner profile was found. You can apply using this Gleent Account."
+                    : "Please review your application and try again.")}
                 </div>
               )}
-              <div className="grid gap-2">
-                <Label htmlFor="name">Full Name</Label>
-                <Input
-                  id="name"
-                  type="text"
-                  placeholder="Jane Doe"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="partner@example.com"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  required
-                />
+              <div className="rounded-lg border bg-muted/30 p-3 text-sm">
+                <div className="font-medium">Gleent Account</div>
+                <div className="mt-1">{identity.name || identity.email}</div>
+                <div className="text-muted-foreground">{identity.email}</div>
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="company_name">Company (optional)</Label>
-                <Input
-                  id="company_name"
-                  type="text"
-                  placeholder="Acme Inc."
-                  value={formData.company_name}
-                  onChange={(e) => setFormData({ ...formData, company_name: e.target.value })}
-                />
+                <Input id="company_name" value={formData.company_name} onChange={(event) => setFormData({ ...formData, company_name: event.target.value })} placeholder="Acme Inc." />
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="phone">Phone (optional)</Label>
-                <Input
-                  id="phone"
-                  type="tel"
-                  placeholder="+63 912 345 6789"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                />
+                <Input id="phone" type="tel" value={formData.phone} onChange={(event) => setFormData({ ...formData, phone: event.target.value })} placeholder="+63 912 345 6789" />
               </div>
               <Button type="submit" className="w-full" disabled={loading}>
-                {loading && <Loader2 className="size-4 animate-spin mr-2" />}
+                {loading && <Loader2 className="mr-2 size-4 animate-spin" />}
                 Submit application
               </Button>
             </form>
             <div className="mt-4 text-center text-sm">
-              Already have an account?{" "}
-              <Link to="/partner/login" className="text-primary hover:underline font-medium">
-                Login
-              </Link>
+              Already a partner? <Link to="/partner/login" className="font-medium text-primary hover:underline">Sign in</Link>
             </div>
           </CardContent>
         </Card>

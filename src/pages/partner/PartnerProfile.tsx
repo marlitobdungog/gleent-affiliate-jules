@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react"
-import { Link } from "react-router-dom"
 import { Loader2 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -44,7 +43,6 @@ export function PartnerProfile() {
     try {
       const updated = await partnerPortalApi.updateProfile({
         name: formData.name,
-        email: formData.email,
         company_name: formData.companyName || undefined,
         phone: formData.phone || undefined,
       })
@@ -107,9 +105,10 @@ export function PartnerProfile() {
                 id="email"
                 type="email"
                 value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                required
+                readOnly
+                aria-describedby="account-email-help"
               />
+              <p id="account-email-help" className="text-xs text-muted-foreground">Your sign-in email is managed in Gleent Account.</p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="company">Company Name</Label>
@@ -130,9 +129,6 @@ export function PartnerProfile() {
             <div className="flex items-center gap-3 pt-2">
               <Button type="submit" disabled={saving}>
                 {saving ? "Saving..." : "Save Changes"}
-              </Button>
-              <Button variant="outline" asChild>
-                <Link to="/partner/profile/change-password">Change Password</Link>
               </Button>
             </div>
           </form>

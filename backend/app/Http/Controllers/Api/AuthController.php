@@ -89,17 +89,22 @@ class AuthController extends Controller
 
     public function registerPartner(RegisterPartnerApplicationRequest $request, ApplicationService $applicationService)
     {
-        $application = $applicationService->submit($request->validated());
+        $identity = $request->session()->get('affiliate_onboarding_identity');
+        abort_unless(is_array($identity) && ($identity['account_email_verified'] ?? false) === true, 401, 'Sign in with a verified Gleent Account before applying.');
+
+        $application = $applicationService->submit(array_merge($request->validated(), [
+            'name' => $identity['account_name'] ?: $identity['account_email'],
+            'email' => strtolower($identity['account_email']),
+            'account_user_id' => $identity['account_user_id'],
+            'auth_service_user_id' => $identity['user_id'],
+            'auth_service_tenant_id' => $identity['tenant_id'],
+        ]));
+        $request->session()->forget('affiliate_onboarding_identity');
 
         return response()->json([
             'message' => 'Application submitted successfully. You will receive access once approved.',
             'application' => $application->load('targetProduct'),
         ], 201);
-    }
-
-    public function loginPartner(Request $request)
-    {
-        return $this->authenticate($request, fn (User $user) => $user->isPartner());
     }
 
     private function authenticate(Request $request, callable $roleCheck)
@@ -157,6 +162,16 @@ class AuthController extends Controller
         }
 
         if ($user->isPartner()) {
+            $partner = $user->partner;
+            if (! $partner || ! in_array($partner->status, ['active', 'approved'], true)) {
+                Auth::guard('web')->logout();
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
+
+                return response()->json([
+                    'message' => 'Affiliate partner access is not active.',
+                ], 401);
+            }
             $user->load('partner');
         }
 

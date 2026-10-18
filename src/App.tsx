@@ -16,7 +16,6 @@ import { MarketingMaterials } from "@/pages/MarketingMaterials"
 import { Login } from "@/pages/Login"
 import { PartnerLogin } from "@/pages/partner/PartnerLogin"
 import { PartnerRegister } from "@/pages/partner/PartnerRegister"
-import { PartnerActivate } from "@/pages/partner/PartnerActivate"
 import { PartnerDashboard } from "@/pages/partner/PartnerDashboard"
 import { PartnerMyLink } from "@/pages/partner/PartnerMyLink"
 import { PartnerReferrals } from "@/pages/partner/PartnerReferrals"
@@ -25,7 +24,6 @@ import { PartnerCommissions } from "@/pages/partner/PartnerCommissions"
 import { PartnerPayouts } from "@/pages/partner/PartnerPayouts"
 import { PartnerMarketingAssets } from "@/pages/partner/PartnerMarketingAssets"
 import { PartnerProfile } from "@/pages/partner/PartnerProfile"
-import { PartnerChangePassword } from "@/pages/partner/PartnerChangePassword"
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute"
 
 function App() {
@@ -34,7 +32,6 @@ function App() {
       <Route path="/admin/login" element={<Login />} />
       <Route path="/partner/login" element={<PartnerLogin />} />
       <Route path="/partner/register" element={<PartnerRegister />} />
-      <Route path="/partner/activate" element={<PartnerActivate />} />
 
       {/* Protected Admin Routes */}
       <Route element={<ProtectedRoute allowedRoles={["admin"]} loginPath="/admin/login" />}>
@@ -67,7 +64,6 @@ function App() {
           <Route path="payouts" element={<PartnerPayouts />} />
           <Route path="marketing-assets" element={<PartnerMarketingAssets />} />
           <Route path="profile" element={<PartnerProfile />} />
-          <Route path="profile/change-password" element={<PartnerChangePassword />} />
         </Route>
       </Route>
 

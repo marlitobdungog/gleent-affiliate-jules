@@ -194,7 +194,6 @@ export const applicationsApi = {
   update: (id: string, data: any) => api.put(`/applications/${id}`, data),
   delete: (id: string) => api.delete(`/applications/${id}`),
   approve: (id: string) => api.post(`/applications/${id}/approve`, {}),
-  activationLink: (id: string) => api.post(`/applications/${id}/activation-link`, {}),
   reject: (id: string, notes: string) => api.post(`/applications/${id}/reject`, { review_notes: notes }),
   needsMoreInfo: (id: string, notes: string) => api.post(`/applications/${id}/needs-more-info`, { review_notes: notes }),
 };
@@ -290,35 +289,24 @@ export const authApi = {
 };
 
 export const partnerAuthApi = {
+  onboarding: async () => {
+    const response = await fetch(backendUrl('/api/partner/onboarding'), { credentials: 'include' });
+    if (!response.ok) throw new Error('No signed-in Gleent Account session');
+    return response.json();
+  },
   register: async (data: any) => {
     await authApi.getCsrfCookie();
     return api.post('/partner/register', data);
   },
-  login: async (data: any) => {
-    await authApi.getCsrfCookie();
-    return api.post('/partner/login', data);
-  },
-  activate: (data: {
-    email: string;
-    token: string;
-    password: string;
-    password_confirmation: string;
-  }) => api.post('/partner/activate', data),
 };
 
 export const partnerPortalApi = {
   getProfile: () => api.get('/partner/profile'),
   updateProfile: (data: {
     name: string
-    email: string
     company_name?: string
     phone?: string
   }) => api.put('/partner/profile', data),
-  changePassword: (data: {
-    current_password: string
-    password: string
-    password_confirmation: string
-  }) => api.put('/partner/password', data),
   getDashboard: () => api.get('/partner/dashboard'),
   getReferrals: () => api.get('/partner/referrals'),
   submitReferral: (data: {

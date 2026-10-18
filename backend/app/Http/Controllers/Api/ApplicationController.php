@@ -39,12 +39,14 @@ class ApplicationController extends Controller
     public function update(UpdateApplicationRequest $request, Application $application): JsonResponse
     {
         $application->update($request->validated());
+
         return response()->json($application);
     }
 
     public function destroy(Application $application): JsonResponse
     {
         $application->delete();
+
         return response()->json(null, 204);
     }
 
@@ -54,20 +56,6 @@ class ApplicationController extends Controller
 
         return response()->json([
             'partner' => $result['partner'],
-            'activation_link' => $result['activation_link'],
-        ]);
-    }
-
-    public function activationLink(Application $application): JsonResponse
-    {
-        if ($application->status !== 'approved') {
-            return response()->json([
-                'message' => 'Only approved applications have activation links.',
-            ], 422);
-        }
-
-        return response()->json([
-            'activation_link' => $this->applicationService->createActivationLinkFor($application),
         ]);
     }
 
@@ -75,8 +63,9 @@ class ApplicationController extends Controller
     {
         $application->update([
             'status' => 'rejected',
-            'review_notes' => $request->review_notes
+            'review_notes' => $request->review_notes,
         ]);
+
         return response()->json($application);
     }
 
@@ -84,8 +73,9 @@ class ApplicationController extends Controller
     {
         $application->update([
             'status' => 'needs_more_info',
-            'review_notes' => $request->review_notes
+            'review_notes' => $request->review_notes,
         ]);
+
         return response()->json($application);
     }
 }

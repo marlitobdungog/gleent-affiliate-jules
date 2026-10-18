@@ -1,47 +1,31 @@
+import { useEffect } from "react"
+import { Link, useNavigate, useSearchParams } from "react-router-dom"
+import { Handshake, LogIn } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Handshake, Loader2 } from "lucide-react"
-import { useNavigate, Link } from "react-router-dom"
-import { useState } from "react"
-import { partnerAuthApi } from "@/services/api"
 import { useAuth } from "@/hooks/useAuth"
-import * as React from "react"
+
+const errorMessages: Record<string, string> = {
+  affiliate_access_denied: "This Gleent Account does not have active Affiliate partner access.",
+  partner_not_active: "Your partner application is not approved yet, or your access is inactive.",
+  not_an_active_partner: "No active Affiliate partner profile is linked to this Gleent Account.",
+  account_link_conflict: "This partner profile is linked to a different Gleent Account. Contact support.",
+  sso_unavailable: "Sign-in is temporarily unavailable. Please try again shortly.",
+  sign_in_failed: "We could not complete sign-in. Please try again.",
+  invalid_sso_state: "This sign-in request expired. Please start again.",
+}
 
 export function PartnerLogin() {
   const navigate = useNavigate()
-  const { login, user } = useAuth()
-  const [loading, setLoading] = useState(false)
+  const [searchParams] = useSearchParams()
+  const { user } = useAuth()
 
-  React.useEffect(() => {
-    if (user?.role === "partner") {
-      navigate("/partner/dashboard")
-    } else if (user?.role === "admin") {
-      navigate("/admin/dashboard")
-    }
+  useEffect(() => {
+    if (user?.role === "partner") navigate("/partner/dashboard")
+    else if (user?.role === "admin") navigate("/admin/dashboard")
   }, [user, navigate])
 
-  const [error, setError] = useState<string | null>(null)
-  const [formData, setFormData] = useState({
-    email: "",
-    password: "",
-  })
-
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    setError(null)
-    try {
-      const response = await partnerAuthApi.login(formData)
-      login(response.user)
-      navigate("/partner/dashboard")
-    } catch (err: any) {
-      setError(err.message || "Invalid credentials")
-    } finally {
-      setLoading(false)
-    }
-  }
+  const startSignIn = () => window.location.assign("/api/sso/start/login")
 
   return (
     <div className="flex min-h-svh flex-col items-center justify-center bg-muted/40 p-6 md:p-10">
@@ -57,48 +41,25 @@ export function PartnerLogin() {
         </div>
         <Card className="shadow-none">
           <CardHeader>
-            <CardTitle className="text-xl">Welcome back</CardTitle>
+            <CardTitle className="text-xl">Sign in to Affiliate</CardTitle>
             <CardDescription>
-              Login to track referrals, commissions, and payouts.
+              Use your Gleent Account to access referrals, commissions, and payouts.
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <form onSubmit={handleLogin} className="grid gap-6">
-              {error && (
-                <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-lg">
-                  {error}
-                </div>
-              )}
-              <div className="grid gap-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="partner@example.com"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  required
-                />
+          <CardContent className="grid gap-4">
+            {searchParams.get("error") && (
+              <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive" role="alert">
+                {errorMessages[searchParams.get("error")!] ?? "Sign-in could not be completed."}
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  required
-                />
-              </div>
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading && <Loader2 className="size-4 animate-spin mr-2" />}
-                Login
-              </Button>
-            </form>
-            <div className="mt-4 text-center text-sm">
-              Don't have an account?{" "}
-              <Link to="/partner/register" className="text-primary hover:underline font-medium">
-                Register
+            )}
+            <Button type="button" className="w-full" onClick={startSignIn}>
+              <LogIn className="mr-2 size-4" />
+              Continue with Gleent Account
+            </Button>
+            <div className="text-center text-sm text-muted-foreground">
+              Not a partner yet?{" "}
+              <Link to="/partner/register" className="font-medium text-primary hover:underline">
+                Apply to the program
               </Link>
             </div>
           </CardContent>

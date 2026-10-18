@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\PartnerChangePasswordRequest;
 use App\Http\Requests\PartnerStoreReferralRequest;
 use App\Http\Requests\PartnerUpdateProfileRequest;
 use App\Models\MarketingAsset;
@@ -13,7 +12,6 @@ use App\Services\PartnerPortalService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
@@ -34,14 +32,8 @@ class PartnerPortalController extends Controller
         $validated = $request->validated();
 
         DB::transaction(function () use ($partner, $validated) {
-            $partner->user->update([
-                'name' => $validated['name'],
-                'email' => $validated['email'],
-            ]);
-
             $partner->update([
                 'name' => $validated['name'],
-                'email' => $validated['email'],
                 'phone' => $validated['phone'] ?? null,
                 'company_name' => $validated['company_name'] ?? null,
             ]);
@@ -50,18 +42,6 @@ class PartnerPortalController extends Controller
         $partner->refresh()->load('user');
 
         return response()->json($service->getProfile($partner));
-    }
-
-    public function changePassword(PartnerChangePasswordRequest $request): JsonResponse
-    {
-        /** @var Partner $partner */
-        $partner = $request->attributes->get('partner');
-
-        $partner->user->update([
-            'password' => Hash::make($request->validated('password')),
-        ]);
-
-        return response()->json(['message' => 'Password updated successfully.']);
     }
 
     public function dashboard(Request $request, PartnerPortalService $service): JsonResponse

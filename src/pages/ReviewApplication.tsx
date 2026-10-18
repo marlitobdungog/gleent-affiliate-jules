@@ -1,6 +1,6 @@
 import * as React from "react"
 import { useNavigate, useParams } from "react-router-dom"
-import { ArrowLeft, Check, Copy, ExternalLink, X, Loader2 } from "lucide-react"
+import { ArrowLeft, Check, ExternalLink, X, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
@@ -9,7 +9,6 @@ import { Textarea } from "@/components/ui/textarea"
 import { StatusBadge } from "@/components/shared/StatusBadge"
 import { applicationsApi } from "@/services/api"
 import { applicationStatusConfig } from "@/lib/statusConfig"
-import { toast } from "sonner"
 
 export function ReviewApplication() {
   const navigate = useNavigate()
@@ -23,7 +22,6 @@ export function ReviewApplication() {
     partnerLink: string
     commissionRate: string
     commissionType: string
-    activationLink: string
   } | null>(null)
 
   React.useEffect(() => {
@@ -73,41 +71,10 @@ export function ReviewApplication() {
         partnerLink: result.partner.partner_link,
         commissionRate: result.partner.commission_rate,
         commissionType: result.partner.commission_type,
-        activationLink: result.activation_link,
       })
       await fetchApplication()
     } catch (err: any) {
       alert(err.message || "Failed to approve application")
-    } finally {
-      setIsProcessing(false)
-    }
-  }
-
-  const handleCopyActivationLink = async () => {
-    if (!approvedDetails?.activationLink) return
-
-    try {
-      await navigator.clipboard.writeText(approvedDetails.activationLink)
-      toast.success("Activation link copied to clipboard")
-    } catch {
-      toast.error("Failed to copy activation link")
-    }
-  }
-
-  const handleGenerateActivationLink = async () => {
-    setIsProcessing(true)
-    try {
-      const result = await applicationsApi.activationLink(applicationId!)
-      setApprovedDetails((current) => ({
-        partnerCode: current?.partnerCode ?? "",
-        partnerLink: current?.partnerLink ?? "",
-        commissionRate: current?.commissionRate ?? "",
-        commissionType: current?.commissionType ?? "",
-        activationLink: result.activation_link,
-      }))
-      toast.success("New activation link generated")
-    } catch (err: any) {
-      toast.error(err.message || "Failed to generate activation link")
     } finally {
       setIsProcessing(false)
     }
@@ -245,11 +212,10 @@ export function ReviewApplication() {
               {approvedDetails && (
                 <div className="rounded-lg border border-emerald-200 bg-emerald-50 dark:bg-emerald-950 dark:border-emerald-800 p-4 space-y-3">
                   <p className="text-sm font-medium text-emerald-800 dark:text-emerald-300">
-                    Partner account created
+                    Partner account created and Affiliate access granted
                   </p>
                   <p className="text-xs text-emerald-700 dark:text-emerald-400">
-                    Copy and share this one-time activation link with the partner. Generating a
-                    new link invalidates the previous one.
+                    The partner can now sign in using the Gleent Account associated with this application.
                   </p>
                   <dl className="space-y-2 text-sm">
                     <div>
@@ -268,17 +234,6 @@ export function ReviewApplication() {
                       <dt className="text-xs text-muted-foreground">Assigned Product</dt>
                       <dd>{application.target_product?.name}</dd>
                     </div>
-                    <Separator />
-                    <div>
-                      <dt className="text-xs text-muted-foreground">Activation Link</dt>
-                      <dd className="mt-1 flex gap-2">
-                        <span className="min-w-0 flex-1 break-all font-mono text-xs">{approvedDetails.activationLink}</span>
-                        <Button variant="outline" size="icon" className="shrink-0" onClick={handleCopyActivationLink}>
-                          <Copy className="size-4" />
-                          <span className="sr-only">Copy activation link</span>
-                        </Button>
-                      </dd>
-                    </div>
                   </dl>
                 </div>
               )}
@@ -287,21 +242,15 @@ export function ReviewApplication() {
                 <Button
                   className="w-full"
                   onClick={handleApprove}
-                  disabled={application.status === "approved" || !!approvedDetails || isProcessing}
+                  disabled={application.status === "approved" || !!approvedDetails || isProcessing || !application.account_user_id}
                 >
                   {isProcessing ? <Loader2 className="size-4 animate-spin mr-1.5" /> : <Check className="size-4 mr-1.5" />}
                   Approve Partner
                 </Button>
-                {application.status === "approved" && (
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    onClick={handleGenerateActivationLink}
-                    disabled={isProcessing}
-                  >
-                    {isProcessing && <Loader2 className="size-4 animate-spin mr-1.5" />}
-                    Generate Activation Link
-                  </Button>
+                {!application.account_user_id && application.status !== "approved" && (
+                  <p className="text-xs text-muted-foreground">
+                    This application has no linked Gleent Account yet. The applicant must sign in and resubmit before it can be approved.
+                  </p>
                 )}
                 <Button
                   variant="outline"
