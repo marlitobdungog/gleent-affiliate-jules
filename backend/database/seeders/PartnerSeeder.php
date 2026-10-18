@@ -3,6 +3,8 @@
 namespace Database\Seeders;
 
 use App\Models\Partner;
+use App\Models\PartnerProductEligibility;
+use App\Models\Product;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
@@ -18,7 +20,7 @@ class PartnerSeeder extends Seeder
             'role' => 'partner',
         ]);
 
-        Partner::create([
+        $alice = Partner::create([
             'user_id' => $aliceUser->id,
             'name' => 'Alice Cooper',
             'email' => 'alice@example.com',
@@ -32,6 +34,7 @@ class PartnerSeeder extends Seeder
             'joined_at' => now()->subMonths(8),
             'approved_at' => now()->subMonths(8),
         ]);
+        $this->grantDefaultProduct($alice);
 
         $charlieUser = User::create([
             'name' => 'Charlie Brown',
@@ -40,7 +43,7 @@ class PartnerSeeder extends Seeder
             'role' => 'partner',
         ]);
 
-        Partner::create([
+        $charlie = Partner::create([
             'user_id' => $charlieUser->id,
             'name' => 'Charlie Brown',
             'email' => 'charlie@example.com',
@@ -52,8 +55,9 @@ class PartnerSeeder extends Seeder
             'joined_at' => now()->subMonths(4),
             'approved_at' => now()->subMonths(4),
         ]);
+        $this->grantDefaultProduct($charlie);
 
-        Partner::create([
+        $david = Partner::create([
             'name' => 'David Miller',
             'email' => 'david@example.com',
             'partner_code' => 'DVM2026',
@@ -63,5 +67,19 @@ class PartnerSeeder extends Seeder
             'commission_rate' => 15,
             'joined_at' => now()->subMonths(2),
         ]);
+        $this->grantDefaultProduct($david);
+    }
+
+    private function grantDefaultProduct(Partner $partner): void
+    {
+        $product = Product::query()->where('status', 'active')->orderBy('id')->first();
+        if (! $product) {
+            return;
+        }
+
+        PartnerProductEligibility::updateOrCreate(
+            ['partner_id' => $partner->id, 'product_id' => $product->id],
+            ['is_active' => true],
+        );
     }
 }

@@ -7,9 +7,12 @@ use App\Http\Requests\PartnerStoreReferralRequest;
 use App\Http\Requests\PartnerUpdateProfileRequest;
 use App\Models\MarketingAsset;
 use App\Models\Partner;
+use App\Models\PartnerProductEligibility;
 use App\Models\Referral;
+use App\Services\AffiliateLinkService;
 use App\Services\PartnerPortalService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -65,6 +68,17 @@ class PartnerPortalController extends Controller
         /** @var Partner $partner */
         $partner = $request->attributes->get('partner');
 
+        $eligible = PartnerProductEligibility::query()
+            ->where('partner_id', $partner->id)
+            ->where('product_id', $request->validated('product_id'))
+            ->where('is_active', true)
+            ->whereHas('product', fn ($query) => $query->where('status', 'active'))
+            ->exists();
+
+        if (! $eligible) {
+            return response()->json(['message' => 'Product is not available to this partner.'], 404);
+        }
+
         $referral = Referral::create([
             'partner_id' => $partner->id,
             'product_id' => $request->validated('product_id'),
@@ -114,14 +128,20 @@ class PartnerPortalController extends Controller
         return response()->json($service->getPayouts($partner));
     }
 
-    public function marketingAssets(PartnerPortalService $service): JsonResponse
+    public function marketingAssets(Request $request, PartnerPortalService $service): JsonResponse
     {
-        return response()->json($service->getMarketingAssets());
+        /** @var Partner $partner */
+        $partner = $request->attributes->get('partner');
+
+        return response()->json($service->getMarketingAssets($partner));
     }
 
     public function downloadMarketingAsset(Request $request, MarketingAsset $marketingAsset, PartnerPortalService $service): BinaryFileResponse|JsonResponse
     {
-        if (! $service->isMarketingAssetAvailable($marketingAsset)) {
+        /** @var Partner $partner */
+        $partner = $request->attributes->get('partner');
+
+        if (! $service->isMarketingAssetAvailable($marketingAsset, $partner)) {
             return response()->json(['message' => 'Asset not available.'], 404);
         }
 
@@ -138,8 +158,41 @@ class PartnerPortalController extends Controller
         );
     }
 
-    public function products(PartnerPortalService $service): JsonResponse
+    public function products(Request $request, PartnerPortalService $service): JsonResponse
     {
-        return response()->json($service->getProducts());
+        /** @var Partner $partner */
+        $partner = $request->attributes->get('partner');
+
+        return response()->json($service->getProducts($partner));
+    }
+
+    public function affiliateProducts(Request $request, AffiliateLinkService $service): JsonResponse
+    {
+        /** @var Partner $partner */
+        $partner = $request->attributes->get('partner');
+
+        return response()->json($service->getAffiliateProducts($partner))
+            ->header('Cache-Control', 'private, no-store');
+    }
+
+    public function affiliateLinks(Request $request, AffiliateLinkService $service): JsonResponse
+    {
+        /** @var Partner $partner */
+        $partner = $request->attributes->get('partner');
+        $validated = $request->validate([
+            'product_id' => ['required', 'integer', 'min:1'],
+        ]);
+
+        return response()->json($service->getAffiliateLinks($partner, (int) $validated['product_id']))
+            ->header('Cache-Control', 'private, no-store');
+    }
+
+    public function redirectAffiliateLink(string $token, AffiliateLinkService $service): RedirectResponse
+    {
+        $destination = $service->resolveRedirect($token);
+
+        return redirect()->away($destination, 302)
+            ->header('Cache-Control', 'private, no-store, max-age=0')
+            ->header('Referrer-Policy', 'no-referrer');
     }
 }

@@ -100,3 +100,43 @@ export interface PartnerProduct {
   slug: string
   description: string | null
 }
+
+export interface PartnerAffiliateLandingPage {
+  id: number
+  name: string
+  destination_url: string
+  is_default: boolean
+}
+
+export interface PartnerAffiliateProduct {
+  id: number
+  name: string
+  slug: string
+  description: string | null
+  commission_display: string
+  default_landing_page_id: number | null
+  tracking_mode: "direct" | "redirect"
+  referral_parameter: string
+  attribution_window_days: number
+  landing_pages: PartnerAffiliateLandingPage[]
+}
+
+export interface PartnerAffiliateProductsData {
+  partner_code: string
+  legacy_link: string
+  products: PartnerAffiliateProduct[]
+}
+
+export interface PartnerAffiliateLink {
+  landing_page_id: number
+  landing_page_name: string
+  share_url: string
+  destination_url: string
+  is_default: boolean
+  tracking_mode: "direct" | "redirect"
+}
+
+export interface PartnerAffiliateLinksData {
+  product_id: number
+  links: PartnerAffiliateLink[]
+}

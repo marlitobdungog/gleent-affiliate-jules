@@ -211,6 +211,8 @@ export const partnersApi = {
   delete: (id: string) => api.delete(`/partners/${id}`),
   activate: (id: string) => api.post(`/partners/${id}/activate`, {}),
   suspend: (id: string) => api.post(`/partners/${id}/suspend`, {}),
+  getEligibleProducts: (id: string) => api.get(`/partners/${id}/eligible-products`),
+  updateEligibleProducts: (id: string, productIds: number[]) => api.put(`/partners/${id}/eligible-products`, { product_ids: productIds }),
 };
 
 export const referralsApi = {
@@ -325,6 +327,8 @@ export const partnerPortalApi = {
   getCommissions: () => api.get('/partner/commissions'),
   getPayouts: () => api.get('/partner/payouts'),
   getProducts: () => api.get('/partner/products'),
+  getAffiliateProducts: () => api.get('/partner/affiliate-products'),
+  getAffiliateLinks: (productId: number) => api.get(`/partner/affiliate-links?product_id=${encodeURIComponent(productId)}`),
   getMarketingAssets: () => api.get('/partner/marketing-assets'),
   downloadMarketingAsset: (assetId: string) => {
     window.open(backendUrl(`/api/partner/marketing-assets/${assetId}/download`), '_blank');

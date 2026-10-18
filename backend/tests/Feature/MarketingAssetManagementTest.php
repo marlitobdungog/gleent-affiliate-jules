@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\MarketingAsset;
 use App\Models\Partner;
+use App\Models\PartnerProductEligibility;
 use App\Models\Product;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -91,11 +92,19 @@ class MarketingAssetManagementTest extends TestCase
         Storage::fake('local');
         $partner = $this->partnerUser();
         $activeProduct = $this->product('active-product', 'active');
+        $unassignedProduct = $this->product('unassigned-product', 'active');
         $inactiveProduct = $this->product('inactive-product', 'inactive');
+        PartnerProductEligibility::create([
+            'partner_id' => $partner->partner->id,
+            'product_id' => $activeProduct->id,
+            'is_active' => true,
+        ]);
 
         $generalAsset = $this->asset('General copy');
         $activeAsset = $this->asset('Active product guide');
         $activeAsset->products()->attach($activeProduct);
+        $unassignedAsset = $this->asset('Unassigned product guide');
+        $unassignedAsset->products()->attach($unassignedProduct);
         $inactiveAsset = $this->asset('Inactive product guide');
         $inactiveAsset->products()->attach($inactiveProduct);
 
@@ -105,7 +114,8 @@ class MarketingAssetManagementTest extends TestCase
             ->assertJsonCount(2)
             ->assertJsonFragment(['title' => $generalAsset->title])
             ->assertJsonFragment(['title' => $activeAsset->title])
-            ->assertJsonMissing(['title' => $inactiveAsset->title]);
+            ->assertJsonMissing(['title' => $inactiveAsset->title])
+            ->assertJsonMissing(['title' => $unassignedAsset->title]);
 
         $this->actingAs($partner)
             ->get("/api/partner/marketing-assets/{$activeAsset->id}/download")

@@ -161,34 +161,51 @@ class PartnerPortalService
         ];
     }
 
-    public function getMarketingAssets(): Collection
+    public function getMarketingAssets(Partner $partner): Collection
     {
         return MarketingAsset::query()
             ->where('is_active', true)
-            ->where(function ($query) {
+            ->where(function ($query) use ($partner) {
                 $query->whereDoesntHave('products', fn ($productQuery) => $productQuery->withTrashed())
-                    ->orWhereHas('products', fn ($productQuery) => $productQuery->where('status', 'active'));
+                    ->orWhereHas('products', fn ($productQuery) => $productQuery
+                        ->where('status', 'active')
+                        ->whereHas('partnerEligibilities', fn ($eligibilityQuery) => $eligibilityQuery
+                            ->where('is_active', true)
+                            ->where('partner_id', $partner->id)));
             })
-            ->with(['products' => fn ($query) => $query->where('status', 'active')->select('products.id', 'name')])
+            ->with(['products' => fn ($query) => $query
+                ->where('status', 'active')
+                ->whereHas('partnerEligibilities', fn ($eligibilityQuery) => $eligibilityQuery
+                    ->where('is_active', true)
+                    ->where('partner_id', $partner->id))
+                ->select('products.id', 'name')])
             ->orderBy('sort_order')
             ->get()
             ->map(fn (MarketingAsset $asset) => $this->formatMarketingAsset($asset));
     }
 
-    public function isMarketingAssetAvailable(MarketingAsset $asset): bool
+    public function isMarketingAssetAvailable(MarketingAsset $asset, Partner $partner): bool
     {
         if (! $asset->is_active) {
             return false;
         }
 
         return ! $asset->products()->withTrashed()->exists()
-            || $asset->products()->where('status', 'active')->exists();
+            || $asset->products()
+                ->where('status', 'active')
+                ->whereHas('partnerEligibilities', fn ($query) => $query
+                    ->where('is_active', true)
+                    ->where('partner_id', $partner->id))
+                ->exists();
     }
 
-    public function getProducts(): Collection
+    public function getProducts(Partner $partner): Collection
     {
         return Product::query()
             ->where('status', 'active')
+            ->whereHas('partnerEligibilities', fn ($query) => $query
+                ->where('partner_id', $partner->id)
+                ->where('is_active', true))
             ->orderBy('name')
             ->get(['id', 'name', 'slug', 'description']);
     }

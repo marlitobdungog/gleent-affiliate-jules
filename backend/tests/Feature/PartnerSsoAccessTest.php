@@ -56,6 +56,12 @@ class PartnerSsoAccessTest extends TestCase
         $this->assertNull($user->password);
         $this->assertSame('42', $user->account_user_id);
         $this->assertDatabaseHas('partners', ['user_id' => $user->id, 'status' => 'active']);
+        $partner = Partner::where('user_id', $user->id)->firstOrFail();
+        $this->assertDatabaseHas('partner_product_eligibilities', [
+            'partner_id' => $partner->id,
+            'product_id' => $product->id,
+            'is_active' => true,
+        ]);
 
         Http::assertSent(fn ($request) => $request->method() === 'PUT'
             && str_ends_with($request->url(), '/v1/users/fe405033-3547-4337-80b8-dcf628aa3c26/applications/affiliate')
@@ -90,6 +96,12 @@ class PartnerSsoAccessTest extends TestCase
             'email' => 'product-rate@gleent.test',
             'commission_type' => 'fixed',
             'commission_rate' => '125.50',
+        ]);
+        $partner = Partner::where('email', 'product-rate@gleent.test')->firstOrFail();
+        $this->assertDatabaseHas('partner_product_eligibilities', [
+            'partner_id' => $partner->id,
+            'product_id' => $product->id,
+            'is_active' => true,
         ]);
     }
 

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Application;
+use App\Models\PartnerProductEligibility;
 use App\Models\Product;
 use App\Models\Setting;
 use App\Models\User;
@@ -111,6 +112,12 @@ class ApplicationService
             ]);
 
             $targetProduct = $application->target_product_id ? Product::find($application->target_product_id) : null;
+            if (! $targetProduct || $targetProduct->status !== 'active') {
+                throw ValidationException::withMessages([
+                    'target_product_id' => ['The selected product is not active and cannot be approved for promotion.'],
+                ]);
+            }
+
             $defaultType = $targetProduct?->default_commission_type
                 ?? Setting::where('key', 'default_commission_type')->value('value')
                 ?? 'percentage';
@@ -129,6 +136,12 @@ class ApplicationService
                 'commission_rate' => $defaultRate,
                 'joined_at' => now(),
                 'approved_at' => now(),
+            ]);
+
+            PartnerProductEligibility::create([
+                'partner_id' => $partner->id,
+                'product_id' => $targetProduct->id,
+                'is_active' => true,
             ]);
 
             $this->authService->setAffiliateAccess(

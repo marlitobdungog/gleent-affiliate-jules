@@ -4,9 +4,9 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Partner extends Model
 {
@@ -55,5 +55,15 @@ class Partner extends Model
     public function payouts(): HasMany
     {
         return $this->hasMany(Payout::class);
+    }
+
+    public function productEligibilities(): HasMany
+    {
+        return $this->hasMany(PartnerProductEligibility::class);
+    }
+
+    public function affiliateLinks(): HasMany
+    {
+        return $this->hasMany(ProductAffiliateLink::class);
     }
 }

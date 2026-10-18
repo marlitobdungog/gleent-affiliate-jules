@@ -12,8 +12,10 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { StatusBadge } from "@/components/shared/StatusBadge"
+import { Checkbox } from "@/components/ui/checkbox"
 import { partnersApi } from "@/services/api"
 import { formatCurrency } from "@/lib/format"
+import { toast } from "sonner"
 import {
   commissionStatusConfig,
   dealStatusConfig,
@@ -92,6 +94,7 @@ export function PartnerDetail() {
           <TabsTrigger value="commissions">Commissions</TabsTrigger>
           <TabsTrigger value="payouts">Payouts</TabsTrigger>
           <TabsTrigger value="links">Links & Codes</TabsTrigger>
+          <TabsTrigger value="products">Products</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="mt-6">
@@ -152,8 +155,100 @@ export function PartnerDetail() {
         <TabsContent value="links" className="mt-6">
           <LinksTab partner={partner} />
         </TabsContent>
+        <TabsContent value="products" className="mt-6">
+          <EligibleProductsTab partnerId={partner.id} />
+        </TabsContent>
       </Tabs>
     </div>
+  )
+}
+
+type EligibleProductOption = {
+  id: number
+  name: string
+  slug: string
+  description: string | null
+  is_eligible: boolean
+}
+
+function EligibleProductsTab({ partnerId }: { partnerId: number }) {
+  const [products, setProducts] = React.useState<EligibleProductOption[]>([])
+  const [selectedIds, setSelectedIds] = React.useState<number[]>([])
+  const [savedIds, setSavedIds] = React.useState<number[]>([])
+  const [loading, setLoading] = React.useState(true)
+  const [saving, setSaving] = React.useState(false)
+
+  React.useEffect(() => {
+    let active = true
+    partnersApi.getEligibleProducts(String(partnerId))
+      .then((response: { products: EligibleProductOption[] }) => {
+        if (!active) return
+        setProducts(response.products)
+        const ids = response.products.filter(product => product.is_eligible).map(product => product.id)
+        setSelectedIds(ids)
+        setSavedIds(ids)
+      })
+      .catch(error => {
+        console.error("Failed to load eligible products", error)
+        toast.error("Failed to load eligible products")
+      })
+      .finally(() => active && setLoading(false))
+
+    return () => { active = false }
+  }, [partnerId])
+
+  const toggleProduct = (productId: number, checked: boolean | "indeterminate") => {
+    setSelectedIds(current => checked === true
+      ? [...new Set([...current, productId])]
+      : current.filter(id => id !== productId))
+  }
+
+  const saveProducts = async () => {
+    setSaving(true)
+    try {
+      const response = await partnersApi.updateEligibleProducts(String(partnerId), selectedIds) as { products: EligibleProductOption[] }
+      setProducts(response.products)
+      setSelectedIds(response.products.filter(product => product.is_eligible).map(product => product.id))
+      setSavedIds(response.products.filter(product => product.is_eligible).map(product => product.id))
+      toast.success("Product access updated")
+    } catch (error: any) {
+      toast.error(error?.message ?? "Failed to update product access")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const changed = selectedIds.length !== savedIds.length || selectedIds.some(id => !savedIds.includes(id))
+
+  return (
+    <Card className="border border-border shadow-none">
+      <CardHeader>
+        <CardTitle className="text-base font-semibold">Eligible Products</CardTitle>
+        <p className="text-sm text-muted-foreground">Choose which active products this partner may promote. Removing access stops new links and referral submissions; managed redirect links stop resolving, while direct and legacy URLs remain under the destination site’s control.</p>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {loading ? <div className="py-8 text-center text-sm text-muted-foreground">Loading products…</div> : products.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">There are no active products to assign.</div>
+        ) : <div className="divide-y divide-border rounded-lg border border-border">
+          {products.map(product => (
+            <label key={product.id} className="flex cursor-pointer items-start gap-3 p-4 hover:bg-muted/40">
+              <Checkbox checked={selectedIds.includes(product.id)} onCheckedChange={checked => toggleProduct(product.id, checked)} aria-label={`Allow ${product.name}`} />
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-medium">{product.name}</span>
+                <span className="block text-xs text-muted-foreground">{product.description || product.slug}</span>
+              </span>
+            </label>
+          ))}
+        </div>}
+        <p className="text-xs text-muted-foreground">The partner’s current commission rate remains the applicable rate for their deals across assigned products. Product defaults are used when a new application is approved.</p>
+        <div className="flex justify-end">
+          <Button onClick={saveProducts} disabled={loading || saving || !changed}>
+            {saving && <Loader2 className="mr-2 size-4 animate-spin" />}
+            {saving ? "Saving…" : "Save product access"}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   )
 }
 

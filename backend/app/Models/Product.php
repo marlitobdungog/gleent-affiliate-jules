@@ -62,4 +62,14 @@ class Product extends Model
     {
         return $this->hasMany(ProductConfigurationAudit::class);
     }
+
+    public function partnerEligibilities(): HasMany
+    {
+        return $this->hasMany(PartnerProductEligibility::class);
+    }
+
+    public function affiliateLinks(): HasMany
+    {
+        return $this->hasMany(ProductAffiliateLink::class);
+    }
 }

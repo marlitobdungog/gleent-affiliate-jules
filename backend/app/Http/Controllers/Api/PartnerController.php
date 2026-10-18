@@ -4,8 +4,11 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StorePartnerRequest;
+use App\Http\Requests\UpdatePartnerProductEligibilityRequest;
 use App\Http\Requests\UpdatePartnerRequest;
 use App\Models\Partner;
+use App\Models\PartnerProductEligibility;
+use App\Models\Product;
 use App\Services\AuthServiceClient;
 use App\Services\PartnerAccessService;
 use App\Services\PartnerService;
@@ -36,6 +39,56 @@ class PartnerController extends Controller
     public function show(Partner $partner): JsonResponse
     {
         return response()->json($partner->load(['referrals', 'deals', 'commissions', 'payouts']));
+    }
+
+    public function eligibleProducts(Partner $partner): JsonResponse
+    {
+        $eligibleIds = $partner->productEligibilities()
+            ->where('is_active', true)
+            ->pluck('product_id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        $products = Product::query()
+            ->where('status', 'active')
+            ->orderBy('name')
+            ->get(['id', 'name', 'slug', 'description'])
+            ->map(fn (Product $product) => [
+                'id' => $product->id,
+                'name' => $product->name,
+                'slug' => $product->slug,
+                'description' => $product->description,
+                'is_eligible' => in_array($product->id, $eligibleIds, true),
+            ])
+            ->values();
+
+        return response()->json([
+            'partner_id' => $partner->id,
+            'products' => $products,
+        ]);
+    }
+
+    public function updateEligibleProducts(UpdatePartnerProductEligibilityRequest $request, Partner $partner): JsonResponse
+    {
+        $productIds = collect($request->validated('product_ids'))->map(fn ($id) => (int) $id)->unique()->values();
+
+        DB::transaction(function () use ($request, $partner, $productIds) {
+            $partner->productEligibilities()
+                ->whereNotIn('product_id', $productIds->all())
+                ->update(['is_active' => false, 'updated_at' => now()]);
+
+            foreach ($productIds as $productId) {
+                PartnerProductEligibility::updateOrCreate(
+                    ['partner_id' => $partner->id, 'product_id' => $productId],
+                    [
+                        'is_active' => true,
+                        'granted_by_user_id' => $request->user()?->id,
+                    ],
+                );
+            }
+        });
+
+        return $this->eligibleProducts($partner);
     }
 
     public function update(UpdatePartnerRequest $request, Partner $partner, PartnerAccessService $accessService, AuthServiceClient $authService): JsonResponse

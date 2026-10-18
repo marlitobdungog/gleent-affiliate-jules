@@ -19,7 +19,7 @@ import { Login } from "@/pages/Login"
 import { PartnerLogin } from "@/pages/partner/PartnerLogin"
 import { PartnerRegister } from "@/pages/partner/PartnerRegister"
 import { PartnerDashboard } from "@/pages/partner/PartnerDashboard"
-import { PartnerMyLink } from "@/pages/partner/PartnerMyLink"
+import { PartnerMyLinks } from "@/pages/partner/PartnerMyLinks"
 import { PartnerReferrals } from "@/pages/partner/PartnerReferrals"
 import { PartnerLeadStages } from "@/pages/partner/PartnerLeadStages"
 import { PartnerCommissions } from "@/pages/partner/PartnerCommissions"
@@ -69,7 +69,8 @@ function App() {
         <Route path="/partner" element={<PartnerShell />}>
           <Route index element={<Navigate to="/partner/dashboard" replace />} />
           <Route path="dashboard" element={<PartnerDashboard />} />
-          <Route path="my-link" element={<PartnerMyLink />} />
+          <Route path="my-links" element={<PartnerMyLinks />} />
+          <Route path="my-link" element={<Navigate to="/partner/my-links" replace />} />
           <Route path="referrals" element={<PartnerReferrals />} />
           <Route path="lead-stages" element={<PartnerLeadStages />} />
           <Route path="commissions" element={<PartnerCommissions />} />

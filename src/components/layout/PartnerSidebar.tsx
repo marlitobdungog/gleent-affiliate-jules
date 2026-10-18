@@ -30,7 +30,7 @@ import { authApi } from "@/services/api"
 
 const mainNav = [
   { label: "Dashboard", icon: LayoutDashboard, route: "/partner/dashboard" },
-  { label: "My Link", icon: Link2, route: "/partner/my-link" },
+  { label: "My Links", icon: Link2, route: "/partner/my-links" },
   { label: "Referrals", icon: UserPlus, route: "/partner/referrals" },
   { label: "Lead Stages", icon: GitBranch, route: "/partner/lead-stages" },
   { label: "Commissions", icon: Coins, route: "/partner/commissions" },

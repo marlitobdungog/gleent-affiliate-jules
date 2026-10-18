@@ -18,6 +18,10 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('web')->group(function () {
     Route::get('/me', [AuthController::class, 'me'])->middleware('auth');
 
+    Route::get('r/{token}', [PartnerPortalController::class, 'redirectAffiliateLink'])
+        ->middleware('throttle:120,1')
+        ->where('token', '[A-Za-z0-9]{48}');
+
     Route::get('/dashboard/summary', [DashboardController::class, 'summary'])->middleware('auth');
 
     Route::apiResource('products', ProductController::class)->middleware(['auth', 'admin']);
@@ -35,6 +39,8 @@ Route::middleware('web')->group(function () {
     Route::post('applications/{application}/needs-more-info', [ApplicationController::class, 'needsMoreInfo'])->middleware(['auth', 'admin']);
 
     Route::apiResource('partners', PartnerController::class)->middleware(['auth', 'admin']);
+    Route::get('partners/{partner}/eligible-products', [PartnerController::class, 'eligibleProducts'])->middleware(['auth', 'admin']);
+    Route::put('partners/{partner}/eligible-products', [PartnerController::class, 'updateEligibleProducts'])->middleware(['auth', 'admin']);
     Route::post('partners/{partner}/activate', [PartnerController::class, 'activate'])->middleware(['auth', 'admin']);
     Route::post('partners/{partner}/suspend', [PartnerController::class, 'suspend'])->middleware(['auth', 'admin']);
 
@@ -69,6 +75,8 @@ Route::middleware('web')->group(function () {
         Route::get('commissions', [PartnerPortalController::class, 'commissions']);
         Route::get('payouts', [PartnerPortalController::class, 'payouts']);
         Route::get('products', [PartnerPortalController::class, 'products']);
+        Route::get('affiliate-products', [PartnerPortalController::class, 'affiliateProducts']);
+        Route::get('affiliate-links', [PartnerPortalController::class, 'affiliateLinks'])->middleware('throttle:60,1');
         Route::get('marketing-assets', [PartnerPortalController::class, 'marketingAssets']);
         Route::get('marketing-assets/{marketingAsset}/download', [PartnerPortalController::class, 'downloadMarketingAsset']);
     });
