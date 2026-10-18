@@ -5,7 +5,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT_DIR"
 
 # Hardcode the default image tag to deploy here.
-DEPLOY_TAG="${DEPLOY_TAG:-v1.3.2}"
+DEPLOY_TAG="${DEPLOY_TAG:-v1.3.3}"
 
 CONFIG_FILE="${DEPLOY_ENV_FILE:-deploy.env}"
 load_env_file() {
@@ -267,7 +267,7 @@ gcloud run deploy "$BACKEND_SERVICE" \
   --memory=512Mi \
   --service-account="$SERVICE_ACCOUNT" \
   --vpc-connector=default-run-connector \
-  --vpc-egress=all-traffic \
+  --vpc-egress=private-ranges-only \
   --command=php \
   --args=artisan,serve,--host=0.0.0.0,--port=8080 \
   --env-vars-file="$BACKEND_ENV_YAML" >/dev/null
