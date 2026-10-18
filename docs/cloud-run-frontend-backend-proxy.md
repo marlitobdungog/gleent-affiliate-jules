@@ -86,8 +86,12 @@ The proxy is defined in [docker/frontend/default.conf](../docker/frontend/defaul
 Nginx serves the React build and proxies only backend-bound paths:
 
 ```nginx
+resolver __DNS_RESOLVER__ ipv6=off valid=30s;
+resolver_timeout 5s;
+set $backend_upstream __BACKEND_URL__;
+
 location ^~ /api/ {
-    proxy_pass __BACKEND_URL__;
+    proxy_pass $backend_upstream;
     proxy_http_version 1.1;
     proxy_ssl_server_name on;
     proxy_set_header Host $proxy_host;
@@ -98,7 +102,7 @@ location ^~ /api/ {
 }
 
 location ^~ /sanctum/ {
-    proxy_pass __BACKEND_URL__;
+    proxy_pass $backend_upstream;
     proxy_http_version 1.1;
     proxy_ssl_server_name on;
     proxy_set_header Host $proxy_host;
@@ -116,6 +120,8 @@ location / {
 `^~` ensures `/api/` and `/sanctum/` are handled by the proxy rather than the SPA fallback. Nginx forwards the incoming `Cookie` header to Laravel and preserves Laravel's `Set-Cookie` response headers by default.
 
 `Host` must be `$proxy_host`, which is the backend Cloud Run hostname. Cloud Run uses this host to route the request to the backend service. `X-Forwarded-Host` retains the public frontend hostname so Laravel can understand the browser-facing request.
+
+The frontend container reads its DNS resolver from `/etc/resolv.conf` at startup and inserts it into the Nginx config. The proxy resolves the backend at request time with IPv6 lookups disabled, because Cloud Run's frontend container cannot route to the backend's IPv6 addresses.
 
 ### Build-time backend target
 

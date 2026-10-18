@@ -1,8 +1,8 @@
 *.log
 .DS_Store
 .env
-.env.backup
-.env.production
+.env.*
+!.env.example
 .phpactor.json
 .phpunit.result.cache
 /.codex
@@ -13,6 +13,8 @@
 /.vscode
 /.zed
 /auth.json
+*.pem
+*.key
 /node_modules
 /public/build
 /public/fonts-manifest.dev.json

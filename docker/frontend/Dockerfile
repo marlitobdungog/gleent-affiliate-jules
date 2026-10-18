@@ -19,6 +19,8 @@ ARG BACKEND_URL=http://localhost:8000
 
 COPY docker/frontend/default.conf /etc/nginx/conf.d/default.conf
 RUN sed -i "s|__BACKEND_URL__|${BACKEND_URL}|g" /etc/nginx/conf.d/default.conf
+COPY docker/frontend/05-cloud-run-dns-resolver.sh /docker-entrypoint.d/05-cloud-run-dns-resolver.sh
+RUN chmod +x /docker-entrypoint.d/05-cloud-run-dns-resolver.sh
 COPY --from=build /app/dist /usr/share/nginx/html
 
 EXPOSE 80

@@ -1,8 +1,15 @@
 # Logs
 logs
 *.log
-/.env
-/deploy.env
+.env
+.env.*
+!.env.example
+deploy.env
+deploy.env.*
+!deploy.env.example
+auth.json
+*.pem
+*.key
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*

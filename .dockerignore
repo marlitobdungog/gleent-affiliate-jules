@@ -3,3 +3,10 @@
 node_modules
 dist
 backend
+.env
+.env.*
+deploy.env
+deploy.env.*
+auth.json
+*.pem
+*.key

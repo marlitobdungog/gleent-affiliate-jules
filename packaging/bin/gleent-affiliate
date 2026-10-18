@@ -1,0 +1,47 @@
+#!/bin/sh
+set -eu
+
+APP_NAME="gleent-affiliate"
+ENV_FILE="${GLEENT_AFFILIATE_ENV_FILE:-/etc/gleent-affiliate/.env}"
+RELEASE_FILE="${GLEENT_AFFILIATE_RELEASE_FILE:-/etc/gleent-affiliate/release.json}"
+COMPOSE_FILE="${GLEENT_AFFILIATE_COMPOSE_FILE:-/opt/gleent-affiliate/docker-compose.yml}"
+
+if [ ! -r "$RELEASE_FILE" ]; then
+  echo "$APP_NAME: release metadata not found or unreadable: $RELEASE_FILE" >&2
+  exit 1
+fi
+
+release_value() {
+  key="$1"
+  value="$(sed -n 's/.*"'"$key"'"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$RELEASE_FILE" | head -n 1)"
+  if [ -z "$value" ]; then
+    echo "$APP_NAME: image $key is missing from $RELEASE_FILE" >&2
+    exit 1
+  fi
+  printf '%s\n' "$value"
+}
+
+API="$(release_value API)"
+WEB="$(release_value WEB)"
+DB="$(release_value DB)"
+export API WEB DB
+
+if [ -f "$ENV_FILE" ]; then
+  set -a
+  # shellcheck disable=SC1090
+  . "$ENV_FILE"
+  set +a
+fi
+
+export API WEB DB
+
+case "${1:-}" in
+  up) shift; exec docker compose -f "$COMPOSE_FILE" up -d "$@" ;;
+  down) shift; exec docker compose -f "$COMPOSE_FILE" down "$@" ;;
+  pull) shift; exec docker compose -f "$COMPOSE_FILE" pull "$@" ;;
+  restart) shift; exec docker compose -f "$COMPOSE_FILE" restart "$@" ;;
+  *)
+    printf 'Usage:\n  gleent-affiliate up\n  gleent-affiliate down\n  gleent-affiliate pull\n  gleent-affiliate restart\n'
+    exit 1
+    ;;
+esac

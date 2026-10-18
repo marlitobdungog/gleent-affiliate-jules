@@ -19,7 +19,7 @@ BACKEND_IMAGE := $(IMAGE_PREFIX)/$(GCP_BACKEND_SERVICE):$(TAG)
 FRONTEND_IMAGE := $(IMAGE_PREFIX)/$(GCP_FRONTEND_SERVICE):$(TAG)
 UNAME_S := $(shell uname -s)
 
-.PHONY: build build-mac push print-images docker-auth ensure-supported-build-host ensure-macos
+.PHONY: build build-mac push print-images docker-auth ensure-supported-build-host ensure-macos release
 
 build: ensure-supported-build-host
 ifeq ($(UNAME_S),Darwin)
@@ -68,3 +68,7 @@ ensure-macos:
 		echo "make build-mac is for macOS. Use 'make build' on Linux."; \
 		exit 1; \
 	fi
+
+release:
+	./docker-push.sh
+	appctl app release --path .

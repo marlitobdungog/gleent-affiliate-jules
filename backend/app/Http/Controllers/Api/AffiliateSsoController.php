@@ -219,11 +219,13 @@ class AffiliateSsoController extends Controller
         if (! preg_match('/^[1-9][0-9]{0,19}$/', (string) ($identity['account_user_id'] ?? ''))) {
             $invalidFields[] = 'account_user_id';
         }
-        if (! filter_var($identity['account_email'] ?? null, FILTER_VALIDATE_EMAIL)) {
-            $invalidFields[] = 'account_email';
-        }
-        if (($identity['account_email_verified'] ?? false) !== true) {
-            $invalidFields[] = 'account_email_verified';
+        if ($clientType === 'onboarding') {
+            if (! filter_var($identity['account_email'] ?? null, FILTER_VALIDATE_EMAIL)) {
+                $invalidFields[] = 'account_email';
+            }
+            if (($identity['account_email_verified'] ?? false) !== true) {
+                $invalidFields[] = 'account_email_verified';
+            }
         }
         if (! Str::isUuid((string) ($identity['user_id'] ?? ''))) {
             $invalidFields[] = 'user_id';

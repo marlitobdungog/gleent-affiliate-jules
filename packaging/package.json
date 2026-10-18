@@ -1,0 +1,33 @@
+{
+  "app-name": "gleent-affiliate",
+  "bin-name": "gleent-affiliate",
+  "output": "dist/install.sh",
+  "payload": [
+    {
+      "source": "docker-compose.yml",
+      "target": "/opt/{app-name}/docker-compose.yml",
+      "mode": "0644"
+    },
+    {
+      "source": "release.json",
+      "target": "/etc/{app-name}/release.json",
+      "mode": "0644",
+      "owner": "root",
+      "group": "{app-name}",
+      "idempotent": false
+    },
+    {
+      "source": "../.env.example",
+      "target": "/etc/{app-name}/.env",
+      "mode": "0640",
+      "owner": "root",
+      "group": "{app-name}",
+      "idempotent": true
+    },
+    {
+      "source": "bin/{bin-name}",
+      "target": "/usr/local/bin/{bin-name}",
+      "mode": "0755"
+    }
+  ]
+}
