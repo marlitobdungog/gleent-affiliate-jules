@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AdminUserController;
 use App\Http\Controllers\Api\AffiliateClickHandoffController;
+use App\Http\Controllers\Api\AffiliateLeadCaptureController;
 use App\Http\Controllers\Api\ApplicationController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CommissionController;
@@ -18,6 +19,10 @@ use Illuminate\Support\Facades\Route;
 
 Route::post('affiliate/clicks/verify', [AffiliateClickHandoffController::class, 'verify'])
     ->middleware('throttle:120,1');
+Route::post('affiliate/clicks/exchange', [AffiliateLeadCaptureController::class, 'exchange'])
+    ->middleware('throttle:120,1');
+Route::post('affiliate/leads/capture', [AffiliateLeadCaptureController::class, 'capture'])
+    ->middleware('throttle:60,1');
 
 Route::middleware('web')->group(function () {
     Route::get('/me', [AuthController::class, 'me'])->middleware('auth');

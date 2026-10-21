@@ -238,6 +238,8 @@ class PartnerPortalService
             'product' => $referral->product?->name,
             'status' => $this->formatStatus($referral->status),
             'status_raw' => $referral->status,
+            'source' => $referral->source,
+            'signup_status' => $referral->signup_status,
             'submitted_at' => $referral->created_at?->toDateString(),
         ];
     }

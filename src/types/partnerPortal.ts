@@ -21,6 +21,8 @@ export interface PartnerReferralItem {
   product: string | null
   status: string
   status_raw: string
+  source?: string | null
+  signup_status?: "email_verified" | "account_created" | null
   submitted_at: string | null
 }
 
@@ -52,7 +54,7 @@ export interface PartnerAffiliateAnalyticsOverview extends AffiliateAnalyticsWin
   metrics: {
     total_clicks: number
     unique_clicks: number
-    referrals: number
+    referrals: number | null
     conversion_rate: number
   }
 }
@@ -69,7 +71,7 @@ export interface PartnerAffiliateLinkAnalytics extends AffiliateAnalyticsWindow 
     landing_page_id: number
     total_clicks: number
     unique_clicks: number
-    referrals: number | null
+    referrals: number
   }[]
 }
 

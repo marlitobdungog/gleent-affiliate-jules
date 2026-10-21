@@ -15,6 +15,10 @@ class Referral extends Model
     protected $fillable = [
         'partner_id',
         'product_id',
+        'affiliate_click_id',
+        'lead_identity_hash',
+        'external_source_key',
+        'signup_status',
         'lead_name',
         'lead_email',
         'lead_phone',
@@ -32,6 +36,11 @@ class Referral extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
+    }
+
+    public function affiliateClick(): BelongsTo
+    {
+        return $this->belongsTo(ProductAffiliateLinkClick::class, 'affiliate_click_id', 'click_id');
     }
 
     public function deals(): HasMany

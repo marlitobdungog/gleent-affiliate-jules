@@ -31,7 +31,13 @@ export type ReferralStatus =
   | "Invalid"
   | "Duplicate"
 
-export type ReferralSource = "Partner Link" | "Manual Submission"
+export type ReferralSource =
+  | "Partner Link"
+  | "Manual Submission"
+  | "partner_link"
+  | "manual_submission"
+  | "website_demo"
+  | "website_signup"
 
 export type CommissionStatus =
   | "Not Eligible"

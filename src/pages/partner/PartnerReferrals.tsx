@@ -80,6 +80,26 @@ export function PartnerReferrals() {
       r.email.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
+  const sourceLabel = (source: string | null | undefined) => {
+    switch (source) {
+      case "website_demo":
+        return "Demo request"
+      case "website_signup":
+        return "SprintHR signup"
+      case "manual_submission":
+        return "Manual referral"
+      case "partner_link":
+        return "Affiliate link"
+      default: return source ? source.replaceAll("_", " ") : "Referral"
+    }
+  }
+
+  const signupStatusLabel = (status: PartnerReferralItem["signup_status"]) => {
+    if (status === "email_verified") return "Email verified"
+    if (status === "account_created") return "Account created"
+    return null
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSubmitting(true)
@@ -163,6 +183,10 @@ export function PartnerReferrals() {
                       <div>
                         <p className="font-medium">{referral.lead_name}</p>
                         <p className="text-xs text-muted-foreground">{referral.email}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {sourceLabel(referral.source)}
+                          {signupStatusLabel(referral.signup_status) && ` · ${signupStatusLabel(referral.signup_status)}`}
+                        </p>
                       </div>
                     </TableCell>
                     <TableCell>{referral.company}</TableCell>

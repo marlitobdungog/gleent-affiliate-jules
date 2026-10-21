@@ -9,6 +9,7 @@ use App\Models\ProductAffiliateLinkClick;
 use App\Models\Setting;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Throwable;
 
@@ -88,6 +89,7 @@ class AffiliateClickAnalyticsService
             ->distinct()
             ->count('visitor_key_hash');
         $referrals = $partner->referrals()
+            ->whereNotNull('affiliate_click_id')
             ->whereBetween('created_at', [$window['start_utc'], $window['end_utc']])
             ->count();
 
@@ -144,8 +146,21 @@ class AffiliateClickAnalyticsService
             ->count('visitor_key_hash');
         $productReferrals = $partner->referrals()
             ->where('product_id', $product->id)
+            ->whereNotNull('affiliate_click_id')
             ->whereBetween('created_at', [$window['start_utc'], $window['end_utc']])
             ->count();
+
+        $referralsByLink = collect();
+        if ($links->isNotEmpty()) {
+            $referralsByLink = DB::table('referrals')
+                ->join('product_affiliate_link_clicks as clicks', 'referrals.affiliate_click_id', '=', 'clicks.click_id')
+                ->whereNull('referrals.deleted_at')
+                ->whereIn('clicks.affiliate_link_id', $links->pluck('id'))
+                ->whereBetween('referrals.created_at', [$window['start_utc'], $window['end_utc']])
+                ->selectRaw('clicks.affiliate_link_id, COUNT(*) as referral_count')
+                ->groupBy('clicks.affiliate_link_id')
+                ->pluck('referral_count', 'affiliate_link_id');
+        }
 
         return [
             'product_id' => $product->id,
@@ -158,7 +173,7 @@ class AffiliateClickAnalyticsService
                 'unique_clicks' => (int) $productUniqueClicks,
                 'referrals' => (int) $productReferrals,
             ],
-            'links' => $links->map(function (ProductAffiliateLink $link) use ($aggregates) {
+            'links' => $links->map(function (ProductAffiliateLink $link) use ($aggregates, $referralsByLink) {
                 $aggregate = $aggregates->get($link->id);
 
                 return [
@@ -166,8 +181,7 @@ class AffiliateClickAnalyticsService
                     'landing_page_id' => $link->landing_page_id,
                     'total_clicks' => (int) ($aggregate->total_clicks ?? 0),
                     'unique_clicks' => (int) ($aggregate->unique_clicks ?? 0),
-                    // Referrals are partner/product scoped in this app, not associated with a specific link.
-                    'referrals' => null,
+                    'referrals' => (int) ($referralsByLink->get($link->id) ?? 0),
                 ];
             })->values()->all(),
         ];
