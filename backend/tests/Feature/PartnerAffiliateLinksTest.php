@@ -279,6 +279,9 @@ class PartnerAffiliateLinksTest extends TestCase
         $linkAnalytics = $this->actingAs($partnerUser)
             ->getJson('/api/partner/analytics/links?product_id='.$product->id.'&range=all')
             ->assertOk()
+            ->assertJsonPath('metrics.total_clicks', 3)
+            ->assertJsonPath('metrics.unique_clicks', 1)
+            ->assertJsonPath('metrics.referrals', 1)
             ->json('links');
 
         $this->assertSame(2, $linkAnalytics[0]['total_clicks']);

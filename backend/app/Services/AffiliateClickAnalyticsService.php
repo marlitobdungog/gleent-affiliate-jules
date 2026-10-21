@@ -133,12 +133,31 @@ class AffiliateClickAnalyticsService
                 ->keyBy('affiliate_link_id');
         }
 
+        $productClicks = ProductAffiliateLinkClick::query()
+            ->whereIn('affiliate_link_id', $links->pluck('id'))
+            ->where('is_countable', true)
+            ->whereBetween('created_at', [$window['start_utc'], $window['end_utc']]);
+        $productTotalClicks = (clone $productClicks)->count();
+        $productUniqueClicks = (clone $productClicks)
+            ->whereNotNull('visitor_key_hash')
+            ->distinct()
+            ->count('visitor_key_hash');
+        $productReferrals = $partner->referrals()
+            ->where('product_id', $product->id)
+            ->whereBetween('created_at', [$window['start_utc'], $window['end_utc']])
+            ->count();
+
         return [
             'product_id' => $product->id,
             'range' => $range,
             'timezone' => $window['timezone'],
             'data_available_from' => $window['available_from']->toIso8601String(),
             'is_partial' => $window['is_partial'],
+            'metrics' => [
+                'total_clicks' => (int) $productTotalClicks,
+                'unique_clicks' => (int) $productUniqueClicks,
+                'referrals' => (int) $productReferrals,
+            ],
             'links' => $links->map(function (ProductAffiliateLink $link) use ($aggregates) {
                 $aggregate = $aggregates->get($link->id);
 

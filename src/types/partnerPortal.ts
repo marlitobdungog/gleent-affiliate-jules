@@ -59,6 +59,11 @@ export interface PartnerAffiliateAnalyticsOverview extends AffiliateAnalyticsWin
 
 export interface PartnerAffiliateLinkAnalytics extends AffiliateAnalyticsWindow {
   product_id: number
+  metrics: {
+    total_clicks: number
+    unique_clicks: number
+    referrals: number
+  }
   links: {
     affiliate_link_id: number
     landing_page_id: number
