@@ -8,18 +8,22 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { AnalyticsRangeSelect } from "@/components/partner/AnalyticsRangeSelect"
 import { partnerPortalApi } from "@/services/api"
-import type { PartnerAffiliateLinksData, PartnerAffiliateProductsData } from "@/types/partnerPortal"
+import type { AffiliateAnalyticsRange, PartnerAffiliateLinkAnalytics, PartnerAffiliateLinksData, PartnerAffiliateProductsData } from "@/types/partnerPortal"
 
 export function PartnerMyLinks() {
   const [data, setData] = useState<PartnerAffiliateProductsData | null>(null)
   const [linksData, setLinksData] = useState<PartnerAffiliateLinksData | null>(null)
+  const [linkAnalytics, setLinkAnalytics] = useState<PartnerAffiliateLinkAnalytics | null>(null)
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null)
-  const [selectedLandingPageId, setSelectedLandingPageId] = useState<number | null>(null)
+  const [range, setRange] = useState<AffiliateAnalyticsRange>("30d")
   const [loading, setLoading] = useState(true)
   const [linksLoading, setLinksLoading] = useState(false)
+  const [analyticsLoading, setAnalyticsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [linksError, setLinksError] = useState<string | null>(null)
+  const [analyticsError, setAnalyticsError] = useState<string | null>(null)
   const [copiedValue, setCopiedValue] = useState<string | null>(null)
 
   useEffect(() => {
@@ -31,7 +35,6 @@ export function PartnerMyLinks() {
         const firstProduct = result.products[0]
         if (firstProduct) {
           setSelectedProductId(firstProduct.id)
-          setSelectedLandingPageId(firstProduct.default_landing_page_id ?? firstProduct.landing_pages[0]?.id ?? null)
         }
       })
       .catch((requestError: any) => {
@@ -56,9 +59,6 @@ export function PartnerMyLinks() {
       .then((result: PartnerAffiliateLinksData) => {
         if (!active) return
         setLinksData(result)
-        const product = data?.products.find(item => item.id === selectedProductId)
-        const defaultId = product?.default_landing_page_id ?? result.links.find(link => link.is_default)?.landing_page_id ?? result.links[0]?.landing_page_id ?? null
-        setSelectedLandingPageId(current => result.links.some(link => link.landing_page_id === current) ? current : defaultId)
       })
       .catch((requestError: any) => {
         if (!active) return
@@ -67,21 +67,36 @@ export function PartnerMyLinks() {
       .finally(() => active && setLinksLoading(false))
 
     return () => { active = false }
-  }, [selectedProductId, data])
+  }, [selectedProductId])
+
+  useEffect(() => {
+    if (!selectedProductId) {
+      setLinkAnalytics(null)
+      return
+    }
+
+    let active = true
+    setAnalyticsLoading(true)
+    setAnalyticsError(null)
+    setLinkAnalytics(null)
+    partnerPortalApi.getAffiliateLinkAnalytics(selectedProductId, range)
+      .then((result: PartnerAffiliateLinkAnalytics) => active && setLinkAnalytics(result))
+      .catch((requestError: any) => {
+        if (!active) return
+        setAnalyticsError(requestError?.message || "Click analytics are temporarily unavailable.")
+      })
+      .finally(() => active && setAnalyticsLoading(false))
+
+    return () => { active = false }
+  }, [selectedProductId, range])
 
   const selectedProduct = useMemo(
     () => data?.products.find(product => product.id === selectedProductId) ?? null,
     [data, selectedProductId],
   )
-  const selectedLink = useMemo(
-    () => linksData?.links.find(link => link.landing_page_id === selectedLandingPageId) ?? null,
-    [linksData, selectedLandingPageId],
-  )
-
   const handleProductChange = (value: string) => {
     const product = data?.products.find(item => String(item.id) === value)
     setSelectedProductId(product?.id ?? null)
-    setSelectedLandingPageId(product?.default_landing_page_id ?? product?.landing_pages[0]?.id ?? null)
     setLinksData(null)
   }
 
@@ -193,57 +208,84 @@ export function PartnerMyLinks() {
           </Card>
 
           {selectedProduct && <Card className="shadow-none">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2"><Link2 className="size-5" />Product affiliate link</CardTitle>
-              <CardDescription>Choose a landing page and share its stable Gleent link.</CardDescription>
+            <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2"><Link2 className="size-5" />Product affiliate links</CardTitle>
+                <CardDescription>Share a stable Gleent link and review its click activity.</CardDescription>
+              </div>
+              <AnalyticsRangeSelect value={range} onValueChange={setRange} />
             </CardHeader>
             <CardContent className="space-y-5">
-              {selectedProduct.landing_pages.length > 0 ? <div className="space-y-2">
-                <Label htmlFor="landing-page">Landing page</Label>
-                <Select value={selectedLandingPageId ? String(selectedLandingPageId) : ""} onValueChange={value => setSelectedLandingPageId(Number(value))}>
-                  <SelectTrigger id="landing-page"><SelectValue placeholder="Select a landing page" /></SelectTrigger>
-                  <SelectContent>
-                    {selectedProduct.landing_pages.map(page => <SelectItem key={page.id} value={String(page.id)}>{page.name}{page.is_default ? " (Default)" : ""}{!page.is_active ? " (Unavailable)" : ""}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div> : <div className="rounded-lg border border-dashed border-border p-5 text-sm text-muted-foreground">This product has no active landing pages. Ask your admin to publish one.</div>}
-
+              {selectedProduct.landing_pages.length === 0 && <div className="rounded-lg border border-dashed border-border p-5 text-sm text-muted-foreground">This product has no active landing pages. Ask your admin to publish one.</div>}
               {linksError && <Alert variant="destructive"><AlertTitle>Link unavailable</AlertTitle><AlertDescription>{linksError}</AlertDescription></Alert>}
               {linksLoading && <div className="flex items-center gap-2 py-4 text-sm text-muted-foreground"><Loader2 className="size-4 animate-spin" />Preparing links…</div>}
-              {!linksLoading && selectedLink && <>
-                <div className="space-y-2">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Label htmlFor="share-link">{selectedLink.is_short_link ? "Your short link" : "Your affiliate link"}</Label>
-                    <Badge variant={selectedLink.available ? "secondary" : "destructive"}>
-                      {selectedLink.available ? "Active" : "Unavailable"}
-                    </Badge>
-                  </div>
-                  <div className="flex flex-col gap-2 sm:flex-row">
-                    <Input id="share-link" readOnly value={selectedLink.share_url} className="min-w-0 bg-muted/50 font-mono text-xs" />
-                    <Button type="button" disabled={!selectedLink.available} onClick={() => copyLink(selectedLink.share_url, selectedLink.is_short_link ? "Short link" : "Affiliate link")}>
-                      {copiedValue === selectedLink.share_url ? <Check className="size-4" /> : <Copy className="size-4" />}
-                      <span className="ml-2">{copiedValue === selectedLink.share_url ? "Copied" : selectedLink.is_short_link ? "Copy short link" : "Copy link"}</span>
-                    </Button>
-                  </div>
+              {analyticsError && <Alert variant="destructive"><AlertTitle>Click metrics unavailable</AlertTitle><AlertDescription>{analyticsError} You can still copy and share your links.</AlertDescription></Alert>}
+              {linkAnalytics?.is_partial && <Alert><AlertTitle>Some history is unavailable</AlertTitle><AlertDescription>Verified click analytics start on {new Intl.DateTimeFormat("en-PH", { dateStyle: "medium", timeZone: linkAnalytics.timezone }).format(new Date(linkAnalytics.data_available_from))}. Earlier visits are not included.</AlertDescription></Alert>}
+              {linkAnalytics && !linkAnalytics.is_partial && <p className="text-xs text-muted-foreground">All-time metrics begin {new Intl.DateTimeFormat("en-PH", { dateStyle: "medium", timeZone: linkAnalytics.timezone }).format(new Date(linkAnalytics.data_available_from))}.</p>}
+
+              {!linksLoading && linksData && linksData.links.length > 0 && (
+                <div className="space-y-4">
+                  {linksData.links.map(link => {
+                    const metrics = linkAnalytics?.links.find(item => item.landing_page_id === link.landing_page_id)
+                    const unavailable = analyticsError || (!analyticsLoading && !metrics)
+
+                    return (
+                      <article key={link.landing_page_id} className="space-y-4 rounded-xl border border-border p-4">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div>
+                            <h3 className="font-semibold">{link.landing_page_name}</h3>
+                            {link.is_default && <p className="text-xs text-muted-foreground">Default landing page</p>}
+                          </div>
+                          <Badge variant={link.available ? "secondary" : "destructive"}>{link.available ? "Active" : "Unavailable"}</Badge>
+                        </div>
+
+                        <div className="flex flex-col gap-2 sm:flex-row">
+                          <Input aria-label={`${link.landing_page_name} affiliate link`} readOnly value={link.share_url} className="min-w-0 bg-muted/50 font-mono text-xs" />
+                          <Button type="button" disabled={!link.available} onClick={() => copyLink(link.share_url, link.is_short_link ? "Short link" : "Affiliate link")}>
+                            {copiedValue === link.share_url ? <Check className="size-4" /> : <Copy className="size-4" />}
+                            <span className="ml-2">{copiedValue === link.share_url ? "Copied" : link.is_short_link ? "Copy short link" : "Copy link"}</span>
+                          </Button>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                          <div className="rounded-lg bg-muted/40 p-3">
+                            <p className="text-xs text-muted-foreground">Total Clicks</p>
+                            <p className="mt-1 text-xl font-semibold">{analyticsLoading ? "…" : unavailable ? "Unavailable" : metrics?.total_clicks ?? "—"}</p>
+                          </div>
+                          <div className="rounded-lg bg-muted/40 p-3">
+                            <p className="text-xs text-muted-foreground">Unique Clicks</p>
+                            <p className="mt-1 text-xl font-semibold">{analyticsLoading ? "…" : unavailable ? "Unavailable" : metrics?.unique_clicks ?? "—"}</p>
+                          </div>
+                          <div className="rounded-lg bg-muted/40 p-3">
+                            <p className="text-xs text-muted-foreground">Referrals</p>
+                            <p className="mt-1 text-xl font-semibold">{analyticsLoading ? "…" : metrics?.referrals == null ? "—" : metrics.referrals}</p>
+                            <p className="mt-1 text-xs text-muted-foreground">Not attributed to individual links</p>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Button type="button" variant="outline" asChild>
+                            <a href={link.destination_url} target="_blank" rel="noopener noreferrer">
+                              <ExternalLink className="mr-2 size-4" />Preview destination
+                            </a>
+                          </Button>
+                          <span className="self-center text-xs text-muted-foreground">Previewing does not create an attributed visit.</span>
+                        </div>
+
+                        {!link.available ? (
+                          <Alert variant="destructive"><AlertTitle>This link is unavailable</AlertTitle><AlertDescription>An administrator disabled this landing page or its destination is no longer eligible.</AlertDescription></Alert>
+                        ) : link.is_short_link ? (
+                          <Alert><AlertTitle>Tracked link</AlertTitle><AlertDescription>Gleent counts valid redirects and forwards your partner code with a short-lived attribution handoff. Referrals and commissions continue to follow program rules.</AlertDescription></Alert>
+                        ) : link.tracking_mode === "redirect" ? (
+                          <Alert><AlertTitle>Managed legacy link</AlertTitle><AlertDescription>Gleent records visits and forwards your partner code.</AlertDescription></Alert>
+                        ) : (
+                          <Alert><AlertTitle>Direct legacy link</AlertTitle><AlertDescription>This URL bypasses Gleent's redirect, so link-level click metrics are unavailable.</AlertDescription></Alert>
+                        )}
+                      </article>
+                    )
+                  })}
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  <Button type="button" variant="outline" asChild>
-                    <a href={selectedLink.destination_url} target="_blank" rel="noopener noreferrer">
-                      <ExternalLink className="mr-2 size-4" />Preview destination
-                    </a>
-                  </Button>
-                  <span className="self-center text-xs text-muted-foreground">Previewing does not create an attributed visit.</span>
-                </div>
-                {!selectedLink.available ? (
-                  <Alert variant="destructive"><AlertTitle>This link is unavailable</AlertTitle><AlertDescription>An administrator disabled this landing page or its destination is no longer eligible. Choose an active landing page or contact your administrator.</AlertDescription></Alert>
-                ) : selectedLink.is_short_link ? (
-                  <Alert><AlertTitle>Tracked link</AlertTitle><AlertDescription>Gleent records visits as clicks and forwards your partner code with a short-lived attribution handoff. The destination site must validate and retain attribution for eligible referrals. A click alone does not create a lead or commission.</AlertDescription></Alert>
-                ) : selectedLink.tracking_mode === "redirect" ? (
-                  <Alert><AlertTitle>Managed legacy link</AlertTitle><AlertDescription>Gleent records visits and forwards your partner code. The destination site must retain that code to attribute eligible referrals.</AlertDescription></Alert>
-                ) : (
-                  <Alert><AlertTitle>Direct legacy link</AlertTitle><AlertDescription>This link includes your partner code as a URL parameter. The destination site must store that code to attribute eligible referrals. Once shared, this direct URL cannot be disabled by Gleent.</AlertDescription></Alert>
-                )}
-              </>}
+              )}
 
               {!linksLoading && linksData && linksData.links.length === 0 && selectedProduct.landing_pages.length > 0 && (
                 <div className="rounded-lg border border-dashed border-border p-5 text-sm text-muted-foreground">Links are unavailable for this product right now. Ask your admin to review its affiliate settings.</div>

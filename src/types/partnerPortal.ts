@@ -39,6 +39,35 @@ export interface PartnerDashboardData {
   profile: PartnerProfile
 }
 
+export type AffiliateAnalyticsRange = "7d" | "30d" | "90d" | "all"
+
+export interface AffiliateAnalyticsWindow {
+  range: AffiliateAnalyticsRange
+  timezone: string
+  data_available_from: string
+  is_partial: boolean
+}
+
+export interface PartnerAffiliateAnalyticsOverview extends AffiliateAnalyticsWindow {
+  metrics: {
+    total_clicks: number
+    unique_clicks: number
+    referrals: number
+    conversion_rate: number
+  }
+}
+
+export interface PartnerAffiliateLinkAnalytics extends AffiliateAnalyticsWindow {
+  product_id: number
+  links: {
+    affiliate_link_id: number
+    landing_page_id: number
+    total_clicks: number
+    unique_clicks: number
+    referrals: number | null
+  }[]
+}
+
 export interface PartnerLeadStage {
   stage: string
   status: string

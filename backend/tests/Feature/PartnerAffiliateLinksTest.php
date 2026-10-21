@@ -9,8 +9,10 @@ use App\Models\ProductAffiliateLink;
 use App\Models\ProductAffiliateLinkClick;
 use App\Models\ProductAffiliateSetting;
 use App\Models\ProductLandingPage;
+use App\Models\Referral;
 use App\Models\Setting;
 use App\Models\User;
+use App\Services\AffiliateClickAnalyticsService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -130,6 +132,10 @@ class PartnerAffiliateLinksTest extends TestCase
         $response = $this->get(parse_url($first, PHP_URL_PATH))
             ->assertStatus(302)
             ->assertHeader('Cache-Control', 'max-age=0, no-store, private');
+        $visitorCookie = strtolower((string) $response->headers->get('Set-Cookie'));
+        $this->assertStringContainsString('gleent_visitor=', $visitorCookie);
+        $this->assertStringContainsString('httponly', $visitorCookie);
+        $this->assertStringContainsString('samesite=lax', $visitorCookie);
         parse_str((string) parse_url($response->headers->get('Location'), PHP_URL_QUERY), $query);
         $this->assertSame('updated', $query['source']);
         $this->assertSame('PARTNER2026', $query['ref']);
@@ -226,6 +232,135 @@ class PartnerAffiliateLinksTest extends TestCase
 
         $this->travel(11)->minutes();
         $this->postJson('/api/affiliate/clicks/verify', ['token' => $validToken])->assertNotFound();
+    }
+
+    public function test_partner_analytics_aggregates_clicks_and_unique_visitors_across_links(): void
+    {
+        [$partnerUser, $partner] = $this->partner();
+        $product = $this->product('Analytics Product');
+        $product->update(['website_url' => 'https://analytics.example']);
+        $this->grant($partner, $product);
+        $this->landingPage($product, 'Main', 'https://analytics.example/main', true);
+        $this->landingPage($product, 'Recruitment', 'https://analytics.example/jobs', false);
+
+        $links = $this->actingAs($partnerUser)
+            ->getJson('/api/partner/affiliate-links?product_id='.$product->id)
+            ->assertOk()
+            ->json('links');
+        $this->assertCount(2, $links);
+
+        $visitorToken = str_repeat('a', 64);
+        $firstPath = parse_url($links[0]['share_url'], PHP_URL_PATH);
+        $secondPath = parse_url($links[1]['share_url'], PHP_URL_PATH);
+
+        $this->withUnencryptedCookie('gleent_visitor', $visitorToken)->get($firstPath)->assertStatus(302);
+        $this->withUnencryptedCookie('gleent_visitor', $visitorToken)->get($firstPath)->assertStatus(302);
+        $this->withUnencryptedCookie('gleent_visitor', $visitorToken)->get($secondPath)->assertStatus(302);
+
+        Referral::create([
+            'partner_id' => $partner->id,
+            'product_id' => $product->id,
+            'lead_name' => 'Analytics Lead',
+            'lead_email' => 'analytics-lead@example.com',
+            'company_name' => 'Analytics Co',
+            'source' => 'manual_submission',
+            'status' => 'new',
+        ]);
+
+        $this->actingAs($partnerUser)
+            ->getJson('/api/partner/analytics/overview?range=all')
+            ->assertOk()
+            ->assertJsonPath('metrics.total_clicks', 3)
+            ->assertJsonPath('metrics.unique_clicks', 1)
+            ->assertJsonPath('metrics.referrals', 1)
+            ->assertJsonPath('metrics.conversion_rate', 100)
+            ->assertJsonPath('timezone', 'Asia/Manila');
+
+        $linkAnalytics = $this->actingAs($partnerUser)
+            ->getJson('/api/partner/analytics/links?product_id='.$product->id.'&range=all')
+            ->assertOk()
+            ->json('links');
+
+        $this->assertSame(2, $linkAnalytics[0]['total_clicks']);
+        $this->assertSame(1, $linkAnalytics[0]['unique_clicks']);
+        $this->assertNull($linkAnalytics[0]['referrals']);
+        $this->assertSame(1, $linkAnalytics[1]['total_clicks']);
+        $this->assertSame(1, $linkAnalytics[1]['unique_clicks']);
+
+        $this->assertDatabaseHas('product_affiliate_link_clicks', [
+            'visitor_key_hash' => hash('sha256', $visitorToken),
+            'is_countable' => true,
+        ]);
+    }
+
+    public function test_analytics_excludes_prefetches_and_redirect_survives_a_failed_click_write(): void
+    {
+        [$partnerUser, $partner] = $this->partner();
+        $product = $this->product('Resilient Analytics Product');
+        $product->update(['website_url' => 'https://resilient.example']);
+        $this->grant($partner, $product);
+        $this->landingPage($product, 'Main', 'https://resilient.example/main', true);
+
+        $shareUrl = $this->actingAs($partnerUser)
+            ->getJson('/api/partner/affiliate-links?product_id='.$product->id)
+            ->assertOk()
+            ->json('links.0.share_url');
+        $path = parse_url($shareUrl, PHP_URL_PATH);
+
+        $this->withHeaders([
+            'User-Agent' => 'Slackbot-LinkExpanding',
+            'Purpose' => 'prefetch',
+        ])->get($path)->assertStatus(302);
+
+        $this->assertDatabaseHas('product_affiliate_link_clicks', [
+            'is_countable' => false,
+            'exclusion_reason' => 'prefetch',
+            'visitor_key_hash' => null,
+        ]);
+
+        $analytics = \Mockery::mock(AffiliateClickAnalyticsService::class);
+        $analytics->shouldReceive('recordVisit')
+            ->once()
+            ->andReturn(['click' => null, 'visitor_cookie' => null]);
+        $this->instance(AffiliateClickAnalyticsService::class, $analytics);
+
+        $response = $this->get($path)->assertStatus(302);
+        $destination = (string) $response->headers->get('Location');
+        parse_str((string) parse_url($destination, PHP_URL_QUERY), $query);
+
+        $this->assertSame('PARTNER2026', $query['ref']);
+        $this->assertArrayNotHasKey('gclick', $query);
+    }
+
+    public function test_partner_analytics_cannot_read_another_partners_links_and_validates_range(): void
+    {
+        [$partnerUser, $partner] = $this->partner();
+        $otherUser = User::factory()->create(['role' => 'partner']);
+        $otherPartner = Partner::create([
+            'user_id' => $otherUser->id,
+            'name' => 'Partner Two',
+            'email' => $otherUser->email,
+            'partner_code' => 'PARTNER2027',
+            'partner_link' => 'https://legacy.example/ref/PARTNER2027',
+            'status' => 'active',
+            'commission_type' => 'percentage',
+            'commission_rate' => 10,
+        ]);
+        $ownedProduct = $this->product('Owned Analytics Product');
+        $otherProduct = $this->product('Other Analytics Product');
+        $this->grant($partner, $ownedProduct);
+        $this->grant($otherPartner, $otherProduct);
+        $this->landingPage($ownedProduct, 'Main', 'https://owned.example', true);
+        $this->landingPage($otherProduct, 'Main', 'https://other.example', true);
+
+        $this->actingAs($partnerUser)
+            ->getJson('/api/partner/analytics/links?product_id='.$otherProduct->id)
+            ->assertNotFound();
+
+        $this->actingAs($partnerUser)
+            ->getJson('/api/partner/analytics/overview?range=365d')
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('range');
     }
 
     public function test_partner_cannot_generate_or_submit_for_an_unassigned_product(): void

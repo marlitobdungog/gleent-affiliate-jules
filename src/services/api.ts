@@ -315,6 +315,8 @@ export const partnerPortalApi = {
     phone?: string
   }) => api.put('/partner/profile', data),
   getDashboard: () => api.get('/partner/dashboard'),
+  getAffiliateAnalyticsOverview: (range: string) => api.get(`/partner/analytics/overview?range=${encodeURIComponent(range)}`),
+  getAffiliateLinkAnalytics: (productId: number, range: string) => api.get(`/partner/analytics/links?product_id=${encodeURIComponent(productId)}&range=${encodeURIComponent(range)}`),
   getReferrals: () => api.get('/partner/referrals'),
   submitReferral: (data: {
     product_id: number

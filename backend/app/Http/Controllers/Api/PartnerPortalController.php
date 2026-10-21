@@ -9,6 +9,7 @@ use App\Models\MarketingAsset;
 use App\Models\Partner;
 use App\Models\PartnerProductEligibility;
 use App\Models\Referral;
+use App\Services\AffiliateClickAnalyticsService;
 use App\Services\AffiliateClickHandoffService;
 use App\Services\AffiliateLinkService;
 use App\Services\PartnerPortalService;
@@ -18,6 +19,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\Cookie as SymfonyCookie;
 
 class PartnerPortalController extends Controller
 {
@@ -54,6 +56,34 @@ class PartnerPortalController extends Controller
         $partner = $request->attributes->get('partner');
 
         return response()->json($service->getDashboard($partner));
+    }
+
+    public function analyticsOverview(Request $request, AffiliateClickAnalyticsService $service): JsonResponse
+    {
+        /** @var Partner $partner */
+        $partner = $request->attributes->get('partner');
+        $validated = $request->validate([
+            'range' => ['sometimes', 'string', 'in:7d,30d,90d,all'],
+        ]);
+
+        return response()->json($service->overview($partner, $validated['range'] ?? '30d'))
+            ->header('Cache-Control', 'private, no-store');
+    }
+
+    public function analyticsLinks(Request $request, AffiliateClickAnalyticsService $service): JsonResponse
+    {
+        /** @var Partner $partner */
+        $partner = $request->attributes->get('partner');
+        $validated = $request->validate([
+            'product_id' => ['required', 'integer', 'min:1'],
+            'range' => ['sometimes', 'string', 'in:7d,30d,90d,all'],
+        ]);
+
+        return response()->json($service->linkMetrics(
+            $partner,
+            (int) $validated['product_id'],
+            $validated['range'] ?? '30d',
+        ))->header('Cache-Control', 'private, no-store');
     }
 
     public function referrals(Request $request, PartnerPortalService $service): JsonResponse
@@ -188,21 +218,50 @@ class PartnerPortalController extends Controller
             ->header('Cache-Control', 'private, no-store');
     }
 
-    public function redirectAffiliateShortLink(string $shortCode, AffiliateLinkService $service, AffiliateClickHandoffService $handoff): RedirectResponse
-    {
-        $destination = $service->resolveShortRedirect($shortCode, $handoff);
+    public function redirectAffiliateShortLink(
+        string $shortCode,
+        Request $request,
+        AffiliateLinkService $service,
+        AffiliateClickHandoffService $handoff,
+        AffiliateClickAnalyticsService $analytics,
+    ): RedirectResponse {
+        $result = $service->resolveShortRedirect($shortCode, $handoff, $analytics, $request);
 
-        return redirect()->away($destination, 302)
-            ->header('Cache-Control', 'private, no-store, max-age=0')
-            ->header('Referrer-Policy', 'no-referrer');
+        return $this->redirectToAffiliateDestination($result, $request);
     }
 
-    public function redirectAffiliateLink(string $token, AffiliateLinkService $service, AffiliateClickHandoffService $handoff): RedirectResponse
-    {
-        $destination = $service->resolveRedirect($token, $handoff);
+    public function redirectAffiliateLink(
+        string $token,
+        Request $request,
+        AffiliateLinkService $service,
+        AffiliateClickHandoffService $handoff,
+        AffiliateClickAnalyticsService $analytics,
+    ): RedirectResponse {
+        $result = $service->resolveRedirect($token, $handoff, $analytics, $request);
 
-        return redirect()->away($destination, 302)
+        return $this->redirectToAffiliateDestination($result, $request);
+    }
+
+    private function redirectToAffiliateDestination(array $result, Request $request): RedirectResponse
+    {
+        $response = redirect()->away($result['destination'], 302)
             ->header('Cache-Control', 'private, no-store, max-age=0')
             ->header('Referrer-Policy', 'no-referrer');
+
+        if ($result['visitor_cookie']) {
+            $response->headers->setCookie(SymfonyCookie::create(
+                (string) config('services.affiliate.analytics_visitor_cookie_name', 'gleent_visitor'),
+                $result['visitor_cookie'],
+                now()->addDays((int) config('services.affiliate.analytics_visitor_cookie_days', 400)),
+                '/',
+                null,
+                app()->environment('production') || $request->isSecure(),
+                true,
+                false,
+                SymfonyCookie::SAMESITE_LAX,
+            ));
+        }
+
+        return $response;
     }
 }

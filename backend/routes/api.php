@@ -73,6 +73,8 @@ Route::middleware('web')->group(function () {
         Route::get('profile', [PartnerPortalController::class, 'profile']);
         Route::put('profile', [PartnerPortalController::class, 'updateProfile']);
         Route::get('dashboard', [PartnerPortalController::class, 'dashboard']);
+        Route::get('analytics/overview', [PartnerPortalController::class, 'analyticsOverview'])->middleware('throttle:60,1');
+        Route::get('analytics/links', [PartnerPortalController::class, 'analyticsLinks'])->middleware('throttle:60,1');
         Route::get('referrals', [PartnerPortalController::class, 'referrals']);
         Route::post('referrals', [PartnerPortalController::class, 'storeReferral']);
         Route::get('lead-stages', [PartnerPortalController::class, 'leadStages']);

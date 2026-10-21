@@ -5,11 +5,11 @@ namespace App\Services;
 use App\Models\Partner;
 use App\Models\Product;
 use App\Models\ProductAffiliateLink;
-use App\Models\ProductAffiliateLinkClick;
 use App\Models\ProductLandingPage;
 use App\Models\Setting;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use RuntimeException;
 
@@ -141,26 +141,38 @@ class AffiliateLinkService
         ];
     }
 
-    public function resolveRedirect(string $token, AffiliateClickHandoffService $handoff): string
-    {
+    public function resolveRedirect(
+        string $token,
+        AffiliateClickHandoffService $handoff,
+        AffiliateClickAnalyticsService $analytics,
+        Request $request,
+    ): array {
         $link = ProductAffiliateLink::query()
             ->where('token', $token)
             ->firstOrFail();
 
-        return $this->resolveLink($link, $handoff);
+        return $this->resolveLink($link, $handoff, $analytics, $request);
     }
 
-    public function resolveShortRedirect(string $shortCode, AffiliateClickHandoffService $handoff): string
-    {
+    public function resolveShortRedirect(
+        string $shortCode,
+        AffiliateClickHandoffService $handoff,
+        AffiliateClickAnalyticsService $analytics,
+        Request $request,
+    ): array {
         $link = ProductAffiliateLink::query()
             ->where('short_code', $shortCode)
             ->firstOrFail();
 
-        return $this->resolveLink($link, $handoff);
+        return $this->resolveLink($link, $handoff, $analytics, $request);
     }
 
-    private function resolveLink(ProductAffiliateLink $link, AffiliateClickHandoffService $handoff): string
-    {
+    private function resolveLink(
+        ProductAffiliateLink $link,
+        AffiliateClickHandoffService $handoff,
+        AffiliateClickAnalyticsService $analytics,
+        Request $request,
+    ): array {
         $link->load(['partner', 'product.affiliateSettings', 'landingPage']);
 
         $partner = $link->partner;
@@ -185,23 +197,23 @@ class AffiliateLinkService
             throw (new ModelNotFoundException)->setModel(ProductAffiliateLink::class, [$link->short_code ?? $link->token]);
         }
 
-        $click = ProductAffiliateLinkClick::create([
-            'affiliate_link_id' => $link->id,
-            'click_id' => (string) Str::uuid(),
-        ]);
-        $handoffToken = $handoff->issue($click, $product);
+        $visit = $analytics->recordVisit($link, $request);
+        $click = $visit['click'];
+        $handoffToken = $click ? $handoff->issue($click, $product) : null;
         $referralParameter = $product->affiliateSettings?->referral_parameter ?? 'ref';
         if (strcasecmp($referralParameter, 'gclick') === 0) {
             $referralParameter = 'ref';
         }
 
-        return $this->appendReferralParameters(
-            $landingPage->destination_url,
-            [
-                $referralParameter => $partner->partner_code,
-                'gclick' => $handoffToken,
-            ],
-        );
+        $parameters = [$referralParameter => $partner->partner_code];
+        if ($handoffToken) {
+            $parameters['gclick'] = $handoffToken;
+        }
+
+        return [
+            'destination' => $this->appendReferralParameters($landingPage->destination_url, $parameters),
+            'visitor_cookie' => $visit['visitor_cookie'],
+        ];
     }
 
     private function findOrCreateAffiliateLink(Partner $partner, Product $product, ProductLandingPage $page): ProductAffiliateLink

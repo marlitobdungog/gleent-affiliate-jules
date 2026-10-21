@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react"
 import {
+  MousePointerClick,
   UserPlus,
+  UsersRound,
   Target,
   Handshake,
   Coins,
@@ -9,13 +11,15 @@ import {
   Loader2,
 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { KpiCard } from "@/components/dashboard/KpiCard"
+import { AnalyticsRangeSelect } from "@/components/partner/AnalyticsRangeSelect"
 import { StatusBadge } from "@/components/shared/StatusBadge"
 import { useAuth } from "@/hooks/useAuth"
 import { formatCurrency } from "@/lib/format"
 import { partnerStatusConfig, referralStatusConfig } from "@/lib/statusConfig"
 import { partnerPortalApi } from "@/services/api"
-import type { PartnerDashboardData } from "@/types/partnerPortal"
+import type { AffiliateAnalyticsRange, PartnerAffiliateAnalyticsOverview, PartnerDashboardData } from "@/types/partnerPortal"
 import {
   Table,
   TableBody,
@@ -29,6 +33,10 @@ export function PartnerDashboard() {
   const { user } = useAuth()
   const [data, setData] = useState<PartnerDashboardData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [analytics, setAnalytics] = useState<PartnerAffiliateAnalyticsOverview | null>(null)
+  const [analyticsLoading, setAnalyticsLoading] = useState(true)
+  const [analyticsError, setAnalyticsError] = useState<string | null>(null)
+  const [range, setRange] = useState<AffiliateAnalyticsRange>("30d")
 
   useEffect(() => {
     partnerPortalApi
@@ -37,6 +45,21 @@ export function PartnerDashboard() {
       .catch(console.error)
       .finally(() => setLoading(false))
   }, [])
+
+  useEffect(() => {
+    let active = true
+    setAnalytics(null)
+    setAnalyticsError(null)
+    setAnalyticsLoading(true)
+
+    partnerPortalApi
+      .getAffiliateAnalyticsOverview(range)
+      .then((result: PartnerAffiliateAnalyticsOverview) => active && setAnalytics(result))
+      .catch((error: any) => active && setAnalyticsError(error?.message || "Unable to load click analytics."))
+      .finally(() => active && setAnalyticsLoading(false))
+
+    return () => { active = false }
+  }, [range])
 
   if (loading) {
     return (
@@ -55,6 +78,9 @@ export function PartnerDashboard() {
   }
 
   const { kpi, recent_referrals, profile } = data
+  const availableFrom = analytics?.data_available_from
+    ? new Intl.DateTimeFormat("en-PH", { dateStyle: "medium", timeZone: analytics.timezone }).format(new Date(analytics.data_available_from))
+    : null
 
   return (
     <div className="p-6 space-y-6">
@@ -64,6 +90,46 @@ export function PartnerDashboard() {
           Welcome back, {user?.name}. Here's an overview of your affiliate performance.
         </p>
       </div>
+
+      <section className="space-y-4" aria-labelledby="link-performance-heading">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h2 id="link-performance-heading" className="text-lg font-semibold">Link Performance</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Clicks and referrals across your eligible product links.</p>
+          </div>
+          <AnalyticsRangeSelect value={range} onValueChange={setRange} />
+        </div>
+
+        {analyticsError && (
+          <Alert variant="destructive">
+            <AlertTitle>Click analytics unavailable</AlertTitle>
+            <AlertDescription>{analyticsError} Your links and referrals are unaffected.</AlertDescription>
+          </Alert>
+        )}
+
+        {analyticsLoading && <p className="text-sm text-muted-foreground" role="status">Loading click analytics…</p>}
+
+        {analytics && !analyticsError && <>
+          {analytics.is_partial && availableFrom && (
+            <Alert>
+              <AlertTitle>Some history is unavailable</AlertTitle>
+              <AlertDescription>Verified click analytics start on {availableFrom}. Earlier visits are not included.</AlertDescription>
+            </Alert>
+          )}
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <KpiCard title="Total Clicks" value={String(analytics.metrics.total_clicks)} subtitle="Accepted link visits in period" icon={MousePointerClick} />
+            <KpiCard title="Unique Clicks" value={String(analytics.metrics.unique_clicks)} subtitle="Distinct browser identifiers" icon={UsersRound} iconClassName="bg-violet-500/10 text-violet-600" />
+            <KpiCard title="Referrals" value={String(analytics.metrics.referrals)} subtitle="Created in the same period" icon={UserPlus} iconClassName="bg-emerald-500/10 text-emerald-600" />
+            <KpiCard title="Click Conversion" value={`${analytics.metrics.conversion_rate.toFixed(1)}%`} subtitle="Referrals / unique clicks" icon={TrendingUp} iconClassName="bg-rose-500/10 text-rose-600" />
+          </div>
+          {analytics.metrics.total_clicks === 0 && (
+            <p className="text-sm text-muted-foreground">No clicks yet. Share your affiliate link to start tracking visits.</p>
+          )}
+          {availableFrom && !analytics.is_partial && (
+            <p className="text-xs text-muted-foreground">Tracking data available from {availableFrom}. All-time metrics begin at this date.</p>
+          )}
+        </>}
+      </section>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         <KpiCard
