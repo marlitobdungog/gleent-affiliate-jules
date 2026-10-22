@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Rules\SecureHttpsUrl;
+use App\Support\ProductWebsiteDomain;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
@@ -63,11 +64,8 @@ class UpdateProductRequest extends FormRequest
                 return;
             }
 
-            $websiteHost = strtolower(parse_url($websiteUrl, PHP_URL_HOST) ?: '');
-
             foreach ($product->landingPages()->where('is_active', true)->get() as $page) {
-                $pageHost = strtolower(parse_url($page->destination_url, PHP_URL_HOST) ?: '');
-                if ($pageHost !== $websiteHost) {
+                if (! ProductWebsiteDomain::matches($websiteUrl, $page->destination_url)) {
                     $validator->errors()->add('website_url', 'Update or archive active landing pages before changing the product website host.');
                     break;
                 }

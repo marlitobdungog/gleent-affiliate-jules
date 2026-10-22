@@ -7,6 +7,7 @@ use App\Models\Product;
 use App\Models\ProductAffiliateLink;
 use App\Models\ProductLandingPage;
 use App\Models\Setting;
+use App\Support\ProductWebsiteDomain;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\Request;
@@ -365,8 +366,7 @@ class AffiliateLinkService
         }
 
         $target = parse_url($destination);
-        $website = parse_url($websiteUrl);
-        $host = strtolower($target['host'] ?? '');
+        $host = strtolower(rtrim($target['host'] ?? '', '.'));
         $isLocalHost = $host === 'localhost' || str_ends_with($host, '.localhost');
         $isPrivateIp = filter_var($host, FILTER_VALIDATE_IP) !== false
             && filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false;
@@ -377,8 +377,8 @@ class AffiliateLinkService
         $localHostAllowed = $isLocalHost && app()->environment(['local', 'testing']);
 
         return ($target['scheme'] ?? null) === 'https'
-            && isset($target['host'], $website['host'])
-            && $host === strtolower($website['host'])
+            && isset($target['host'])
+            && ProductWebsiteDomain::matches($websiteUrl, $destination)
             && ! isset($target['user'])
             && ! isset($target['pass'])
             && ! $isPrivateIp

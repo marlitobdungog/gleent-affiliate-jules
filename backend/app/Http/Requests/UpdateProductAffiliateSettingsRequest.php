@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Rules\SecureHttpsUrl;
+use App\Support\ProductWebsiteDomain;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
 
@@ -32,13 +33,11 @@ class UpdateProductAffiliateSettingsRequest extends FormRequest
             }
 
             $websiteUrl = $this->route('product')->website_url;
-            $websiteHost = strtolower(parse_url($websiteUrl ?? '', PHP_URL_HOST) ?: '');
-            $destinationHost = strtolower(parse_url($destination, PHP_URL_HOST) ?: '');
 
-            if ($websiteHost === '') {
+            if (! $websiteUrl) {
                 $validator->errors()->add('base_destination_url', 'Set the product website in General before configuring a destination.');
-            } elseif ($destinationHost !== $websiteHost) {
-                $validator->errors()->add('base_destination_url', 'The destination must use the product website host.');
+            } elseif (! ProductWebsiteDomain::matches($websiteUrl, $destination)) {
+                $validator->errors()->add('base_destination_url', 'The destination must use the product website domain or one of its subdomains.');
             }
         });
     }

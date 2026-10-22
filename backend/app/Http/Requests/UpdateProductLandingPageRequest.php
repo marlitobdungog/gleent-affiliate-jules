@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use App\Models\ProductLandingPage;
 use App\Rules\SecureHttpsUrl;
+use App\Support\ProductWebsiteDomain;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
 
@@ -32,14 +33,13 @@ class UpdateProductLandingPageRequest extends FormRequest
                 return;
             }
 
-            $websiteHost = strtolower(parse_url($this->route('product')->website_url ?? '', PHP_URL_HOST) ?: '');
+            $websiteUrl = $this->route('product')->website_url;
             $destination = $this->input('destination_url', $page->destination_url);
-            $destinationHost = strtolower(parse_url($destination, PHP_URL_HOST) ?: '');
 
-            if ($websiteHost === '') {
+            if (! $websiteUrl) {
                 $validator->errors()->add('destination_url', 'Set the product website in General before editing landing pages.');
-            } elseif ($destinationHost !== $websiteHost) {
-                $validator->errors()->add('destination_url', 'The destination must use the product website host.');
+            } elseif (! ProductWebsiteDomain::matches($websiteUrl, $destination)) {
+                $validator->errors()->add('destination_url', 'The destination must use the product website domain or one of its subdomains.');
             }
 
             if ($this->exists('destination_url') && $willBeActive && ProductLandingPage::query()

@@ -13,6 +13,7 @@ use App\Models\ProductAffiliateSetting;
 use App\Models\ProductConfigurationAudit;
 use App\Models\ProductLandingPage;
 use App\Models\Setting;
+use App\Support\ProductWebsiteDomain;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -266,9 +267,8 @@ class ProductController extends Controller
             return;
         }
 
-        $newHost = strtolower(parse_url($websiteUrl ?? '', PHP_URL_HOST) ?: '');
         foreach ($activePages as $page) {
-            if ($newHost === '' || strtolower(parse_url($page->destination_url, PHP_URL_HOST) ?: '') !== $newHost) {
+            if (! ProductWebsiteDomain::matches($websiteUrl, $page->destination_url)) {
                 throw ValidationException::withMessages([
                     'website_url' => ['Update or archive active landing pages before changing the product website host.'],
                 ]);
@@ -278,11 +278,9 @@ class ProductController extends Controller
 
     private function assertDestinationHost(string $destinationUrl, Product $product): void
     {
-        $websiteHost = strtolower(parse_url($product->website_url ?? '', PHP_URL_HOST) ?: '');
-        $destinationHost = strtolower(parse_url($destinationUrl, PHP_URL_HOST) ?: '');
-        if ($websiteHost === '' || $destinationHost !== $websiteHost) {
+        if (! ProductWebsiteDomain::matches($product->website_url, $destinationUrl)) {
             throw ValidationException::withMessages([
-                'destination_url' => ['The destination must use the product website host.'],
+                'destination_url' => ['The destination must use the product website domain or one of its subdomains.'],
             ]);
         }
     }

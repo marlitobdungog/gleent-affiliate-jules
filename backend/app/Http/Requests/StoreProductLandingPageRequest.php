@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use App\Models\ProductLandingPage;
 use App\Rules\SecureHttpsUrl;
+use App\Support\ProductWebsiteDomain;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
 
@@ -41,13 +42,12 @@ class StoreProductLandingPageRequest extends FormRequest
 
     protected function validateProductHost(Validator $validator): void
     {
-        $websiteHost = strtolower(parse_url($this->route('product')->website_url ?? '', PHP_URL_HOST) ?: '');
-        $destinationHost = strtolower(parse_url($this->input('destination_url', ''), PHP_URL_HOST) ?: '');
+        $websiteUrl = $this->route('product')->website_url;
 
-        if ($websiteHost === '') {
+        if (! $websiteUrl) {
             $validator->errors()->add('destination_url', 'Set the product website in General before adding landing pages.');
-        } elseif ($destinationHost !== $websiteHost) {
-            $validator->errors()->add('destination_url', 'The destination must use the product website host.');
+        } elseif (! ProductWebsiteDomain::matches($websiteUrl, $this->input('destination_url', ''))) {
+            $validator->errors()->add('destination_url', 'The destination must use the product website domain or one of its subdomains.');
         }
     }
 }

@@ -620,7 +620,7 @@ export function ProductDetail() {
             <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <CardTitle className="text-base">Approved landing pages</CardTitle>
-                <CardDescription>Active pages must use the product website host. One active page is the default destination.</CardDescription>
+                <CardDescription>Active pages must use the product website domain or one of its subdomains. One active page is the default destination.</CardDescription>
               </div>
               <Button type="button" onClick={openCreateLandingPage} disabled={!general.website_url}>
                 <Plus className="mr-2 size-4" /> Add Landing Page
@@ -753,7 +753,7 @@ export function ProductDetail() {
             <div className="grid gap-2">
               <Label htmlFor="landing-url">Destination URL</Label>
               <Input id="landing-url" type="url" inputMode="url" placeholder={general.website_url || "https://example.com/campaign"} required value={landingForm.destination_url} onChange={event => setLandingForm({ ...landingForm, destination_url: event.target.value })} aria-invalid={!!fieldError(landingErrors, "destination_url")} />
-              <p className="text-xs text-muted-foreground">Must use HTTPS and match the product website host.</p>
+              <p className="text-xs text-muted-foreground">Must use HTTPS and the product website domain or one of its subdomains.</p>
               {fieldError(landingErrors, "destination_url") && <FieldError message={fieldError(landingErrors, "destination_url")!} />}
             </div>
             <DialogFooter>
