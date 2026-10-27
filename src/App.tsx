@@ -80,7 +80,7 @@ function App() {
         </Route>
       </Route>
 
-      <Route path="/" element={<Navigate to="/admin/login" replace />} />
+      <Route path="/" element={<Navigate to="/partner/login" replace />} />
       <Route path="*" element={<Navigate to="/admin/login" replace />} />
     </Routes>
   )

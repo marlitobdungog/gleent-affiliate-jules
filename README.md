@@ -102,3 +102,5 @@ Partner sign-in and application submission use Gleent Account through auth-servi
 Put the generated client IDs/secrets and the auth-service internal API key in the environment used by Docker Compose (the project-root `.env`) using the `AUTH_SERVICE_*` names in [backend/.env.example](backend/.env.example). Set the same internal API key and matching Account SSO signing/public-key pair in Gleent Account and auth-service. In non-local environments, use the public HTTPS auth-service URL and register the exact HTTPS callback URL with both clients.
 
 For local OAuth, auth-service and Account must already have the Gleent Account SSO issuer, audience, authorization URL, and matching RS256 keys configured. After the variables are set, rebuild/restart the Affiliate backend so Laravel reloads its configuration, then visit `/partner/register` to sign in and apply. Approval grants the `affiliate` app-access record; suspending, deactivating, or deleting the partner revokes it.
+
+For production sign-in failures, see [Partner SSO troubleshooting](docs/troubleshooting/partner-sso-troubleshooting.md).
