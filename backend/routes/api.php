@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AdminUserController;
 use App\Http\Controllers\Api\AffiliateClickHandoffController;
+use App\Http\Controllers\Api\AffiliateCrmStageSyncController;
 use App\Http\Controllers\Api\AffiliateLeadCaptureController;
 use App\Http\Controllers\Api\ApplicationController;
 use App\Http\Controllers\Api\AuthController;
@@ -23,6 +24,8 @@ Route::post('affiliate/clicks/exchange', [AffiliateLeadCaptureController::class,
     ->middleware('throttle:120,1');
 Route::post('affiliate/leads/capture', [AffiliateLeadCaptureController::class, 'capture'])
     ->middleware('throttle:60,1');
+Route::post('affiliate/crm/lead-stages', AffiliateCrmStageSyncController::class)
+    ->middleware('throttle:120,1');
 
 Route::middleware('web')->group(function () {
     Route::get('/me', [AuthController::class, 'me'])->middleware('auth');

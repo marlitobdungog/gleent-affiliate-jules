@@ -21,6 +21,11 @@ export interface PartnerReferralItem {
   product: string | null
   status: string
   status_raw: string
+  crm_pipeline_name?: string | null
+  crm_stage_name?: string | null
+  crm_stage_code?: string | null
+  crm_stage_sort_order?: number | null
+  crm_stage_updated_at?: string | null
   source?: string | null
   signup_status?: "email_verified" | "account_created" | null
   submitted_at: string | null
@@ -76,10 +81,15 @@ export interface PartnerAffiliateLinkAnalytics extends AffiliateAnalyticsWindow 
 }
 
 export interface PartnerLeadStage {
+  key: string
   stage: string
   status: string
+  stage_code: string | null
+  pipeline: string | null
   count: number
   description: string
+  source: "crm" | "affiliate"
+  sort_order: number | null
 }
 
 export interface PartnerCommissionItem {

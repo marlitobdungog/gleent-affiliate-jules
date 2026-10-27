@@ -192,7 +192,12 @@ export function PartnerReferrals() {
                     <TableCell>{referral.company}</TableCell>
                     <TableCell>{referral.product}</TableCell>
                     <TableCell>
-                      <StatusBadge status={referral.status} config={referralStatusConfig} />
+                      <div className="space-y-1">
+                        <StatusBadge status={referral.status} config={referralStatusConfig} />
+                        {referral.crm_pipeline_name && (
+                          <p className="text-xs text-muted-foreground">{referral.crm_pipeline_name}</p>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell className="text-right text-muted-foreground">
                       {referral.submitted_at}

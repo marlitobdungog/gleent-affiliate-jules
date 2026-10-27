@@ -205,7 +205,12 @@ export function PartnerDashboard() {
                       </TableCell>
                       <TableCell className="text-sm">{referral.product}</TableCell>
                       <TableCell>
-                        <StatusBadge status={referral.status} config={referralStatusConfig} />
+                        <div className="space-y-1">
+                          <StatusBadge status={referral.status} config={referralStatusConfig} />
+                          {referral.crm_pipeline_name && (
+                            <p className="text-xs text-muted-foreground">{referral.crm_pipeline_name}</p>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="text-right text-sm text-muted-foreground">
                         {referral.submitted_at}

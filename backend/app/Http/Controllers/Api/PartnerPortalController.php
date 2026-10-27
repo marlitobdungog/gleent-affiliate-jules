@@ -55,7 +55,8 @@ class PartnerPortalController extends Controller
         /** @var Partner $partner */
         $partner = $request->attributes->get('partner');
 
-        return response()->json($service->getDashboard($partner));
+        return response()->json($service->getDashboard($partner))
+            ->header('Cache-Control', 'private, no-store');
     }
 
     public function analyticsOverview(Request $request, AffiliateClickAnalyticsService $service): JsonResponse
@@ -91,7 +92,8 @@ class PartnerPortalController extends Controller
         /** @var Partner $partner */
         $partner = $request->attributes->get('partner');
 
-        return response()->json($service->getReferrals($partner));
+        return response()->json($service->getReferrals($partner))
+            ->header('Cache-Control', 'private, no-store');
     }
 
     public function storeReferral(PartnerStoreReferralRequest $request): JsonResponse
@@ -140,7 +142,8 @@ class PartnerPortalController extends Controller
         /** @var Partner $partner */
         $partner = $request->attributes->get('partner');
 
-        return response()->json($service->getLeadStages($partner));
+        return response()->json($service->getLeadStages($partner))
+            ->header('Cache-Control', 'private, no-store');
     }
 
     public function commissions(Request $request, PartnerPortalService $service): JsonResponse

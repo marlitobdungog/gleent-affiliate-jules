@@ -47,7 +47,18 @@ class PartnerPortalService
         $totalReferrals = $partner->referrals()->count();
         $closedDeals = $partner->deals()->where('status', 'won')->count();
         $activeLeads = $partner->referrals()
-            ->whereNotIn('status', ['closed_won', 'closed_lost', 'invalid', 'duplicate'])
+            ->where(function ($query) {
+                $query->where(function ($crmQuery) {
+                    $crmQuery->whereNotNull('crm_lead_id')
+                        ->where(function ($stageQuery) {
+                            $stageQuery->whereNull('crm_stage_code')
+                                ->orWhereNotIn('crm_stage_code', ['won', 'lost']);
+                        });
+                })->orWhere(function ($affiliateQuery) {
+                    $affiliateQuery->whereNull('crm_lead_id')
+                        ->whereNotIn('status', ['closed_won', 'closed_lost', 'invalid', 'duplicate']);
+                });
+            })
             ->count();
 
         $totalEarnings = (float) $partner->commissions()
@@ -93,31 +104,43 @@ class PartnerPortalService
 
     public function getLeadStages(Partner $partner): array
     {
-        $counts = $partner->referrals()
-            ->selectRaw('status, count(*) as count')
-            ->groupBy('status')
-            ->pluck('count', 'status');
-
-        $stages = collect(self::LEAD_STAGE_ORDER)->map(function (string $status) use ($counts) {
-            return [
-                'stage' => $this->formatStatus($status),
-                'status' => $status,
-                'count' => (int) ($counts[$status] ?? 0),
-                'description' => self::LEAD_STAGE_DESCRIPTIONS[$status] ?? '',
-            ];
-        });
-
-        $otherStatuses = $counts->keys()->diff(self::LEAD_STAGE_ORDER);
-        foreach ($otherStatuses as $status) {
-            $stages->push([
-                'stage' => $this->formatStatus($status),
-                'status' => $status,
-                'count' => (int) $counts[$status],
-                'description' => self::LEAD_STAGE_DESCRIPTIONS[$status] ?? '',
+        $crmStages = $partner->referrals()
+            ->whereNotNull('crm_lead_id')
+            ->selectRaw('crm_pipeline_id, crm_pipeline_name, crm_stage_id, crm_stage_code, crm_stage_name, crm_stage_sort_order, COUNT(*) as referral_count')
+            ->groupBy('crm_pipeline_id', 'crm_pipeline_name', 'crm_stage_id', 'crm_stage_code', 'crm_stage_name', 'crm_stage_sort_order')
+            ->orderBy('crm_pipeline_id')
+            ->orderBy('crm_stage_sort_order')
+            ->get()
+            ->map(fn ($row) => [
+                'key' => 'crm:'.$row->crm_pipeline_id.':'.$row->crm_stage_id,
+                'stage' => $row->crm_stage_name ?: 'Unassigned CRM stage',
+                'status' => 'crm_'.$row->crm_pipeline_id.'_'.$row->crm_stage_id,
+                'stage_code' => $row->crm_stage_code,
+                'pipeline' => $row->crm_pipeline_name,
+                'count' => (int) $row->referral_count,
+                'description' => $row->crm_pipeline_name ?: 'SprintHR CRM pipeline',
+                'source' => 'crm',
+                'sort_order' => (int) $row->crm_stage_sort_order,
             ]);
-        }
 
-        return $stages->values()->all();
+        $affiliateStages = $partner->referrals()
+            ->whereNull('crm_lead_id')
+            ->selectRaw('status, COUNT(*) as referral_count')
+            ->groupBy('status')
+            ->get()
+            ->map(fn ($row) => [
+                'key' => 'affiliate:'.$row->status,
+                'stage' => $this->formatStatus($row->status),
+                'status' => $row->status,
+                'stage_code' => $row->status,
+                'pipeline' => null,
+                'count' => (int) $row->referral_count,
+                'description' => self::LEAD_STAGE_DESCRIPTIONS[$row->status] ?? '',
+                'source' => 'affiliate',
+                'sort_order' => null,
+            ]);
+
+        return $crmStages->concat($affiliateStages)->values()->all();
     }
 
     public function getCommissions(Partner $partner): array
@@ -236,8 +259,13 @@ class PartnerPortalService
             'company' => $referral->company_name,
             'email' => $referral->lead_email,
             'product' => $referral->product?->name,
-            'status' => $this->formatStatus($referral->status),
+            'status' => $referral->crm_stage_name ?: $this->formatStatus($referral->status),
             'status_raw' => $referral->status,
+            'crm_pipeline_name' => $referral->crm_pipeline_name,
+            'crm_stage_name' => $referral->crm_stage_name,
+            'crm_stage_code' => $referral->crm_stage_code,
+            'crm_stage_sort_order' => $referral->crm_stage_sort_order,
+            'crm_stage_updated_at' => $referral->crm_stage_updated_at?->toISOString(),
             'source' => $referral->source,
             'signup_status' => $referral->signup_status,
             'submitted_at' => $referral->created_at?->toDateString(),

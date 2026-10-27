@@ -7,6 +7,7 @@ return [
         'short_link_base_url' => env('AFFILIATE_SHORT_LINK_BASE_URL', env('APP_URL', 'http://localhost')),
         'click_token_ttl_minutes' => env('AFFILIATE_CLICK_TOKEN_TTL_MINUTES', 10),
         'lead_capture_token' => env('AFFILIATE_LEAD_CAPTURE_TOKEN'),
+        'crm_stage_sync_token' => env('AFFILIATE_CRM_STAGE_SYNC_TOKEN'),
         'analytics_timezone' => env('AFFILIATE_ANALYTICS_TIMEZONE', 'Asia/Manila'),
         'analytics_visitor_cookie_days' => 400,
         'analytics_visitor_cookie_name' => 'gleent_visitor',

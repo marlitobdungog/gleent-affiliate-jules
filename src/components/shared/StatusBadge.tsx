@@ -10,7 +10,7 @@ export function StatusBadge({ status, config }: StatusBadgeProps) {
   return (
     <Badge
       variant="outline"
-      className={cn("text-xs font-medium whitespace-nowrap", config[status])}
+      className={cn("text-xs font-medium whitespace-nowrap", config[status] ?? "border-muted text-foreground")}
     >
       {status}
     </Badge>

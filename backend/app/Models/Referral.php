@@ -12,6 +12,12 @@ class Referral extends Model
 {
     use HasFactory, SoftDeletes;
 
+    protected $casts = [
+        'crm_stage_revision' => 'integer',
+        'crm_stage_sort_order' => 'integer',
+        'crm_stage_updated_at' => 'datetime',
+    ];
+
     protected $fillable = [
         'partner_id',
         'product_id',
@@ -26,6 +32,15 @@ class Referral extends Model
         'source',
         'status',
         'notes',
+        'crm_lead_id',
+        'crm_pipeline_id',
+        'crm_pipeline_name',
+        'crm_stage_id',
+        'crm_stage_code',
+        'crm_stage_name',
+        'crm_stage_sort_order',
+        'crm_stage_revision',
+        'crm_stage_updated_at',
     ];
 
     public function partner(): BelongsTo

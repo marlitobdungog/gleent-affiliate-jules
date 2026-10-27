@@ -44,7 +44,7 @@ class AffiliateLeadCaptureController extends Controller
             'attribution_token' => ['required', 'string', 'max:4096'],
             'source' => ['required', 'string', 'in:website_demo,website_signup'],
             'signup_status' => ['nullable', 'string', 'in:email_verified,account_created'],
-            'external_source_key' => ['required_if:source,website_signup', 'nullable', 'string', 'max:150'],
+            'external_source_key' => ['nullable', 'string', 'max:150'],
             'lead_name' => ['required', 'string', 'max:255'],
             'lead_email' => ['required', 'email', 'max:255'],
             'lead_phone' => ['nullable', 'string', 'max:40'],

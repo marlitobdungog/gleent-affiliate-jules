@@ -28,11 +28,13 @@ export function PartnerLeadStages() {
   }
 
   const totalLeads = stages.reduce((sum, s) => sum + s.count, 0)
-  const inPipeline = stages
-    .filter((s) => !["Closed Won", "Closed Lost"].includes(s.stage))
-    .reduce((sum, s) => sum + s.count, 0)
-  const closedWon = stages.find((s) => s.stage === "Closed Won")?.count ?? 0
-  const closedLost = stages.find((s) => s.stage === "Closed Lost")?.count ?? 0
+  const closedWon = stages
+    .filter((stage) => stage.stage_code === "won" || stage.status === "closed_won")
+    .reduce((sum, stage) => sum + stage.count, 0)
+  const closedLost = stages
+    .filter((stage) => stage.stage_code === "lost" || stage.status === "closed_lost")
+    .reduce((sum, stage) => sum + stage.count, 0)
+  const inPipeline = Math.max(0, totalLeads - closedWon - closedLost)
 
   return (
     <div className="p-6 space-y-6">
@@ -82,7 +84,7 @@ export function PartnerLeadStages() {
             stages.map((stage) => {
               const pct = totalLeads > 0 ? (stage.count / totalLeads) * 100 : 0
               return (
-                <div key={stage.status} className="space-y-2">
+                <div key={stage.key} className="space-y-2">
                   <div className="flex items-center justify-between gap-4">
                     <div className="flex items-center gap-3 min-w-0">
                       <StatusBadge status={stage.stage} config={referralStatusConfig} />
