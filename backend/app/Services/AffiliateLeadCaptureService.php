@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Exceptions\ReferralPartnerConflictException;
 use App\Models\Referral;
 use Illuminate\Support\Facades\DB;
 
@@ -24,9 +25,7 @@ class AffiliateLeadCaptureService
                 }
 
                 return DB::transaction(function () use ($existingSource, $data, $email): Referral {
-                    if ($existingSource->trashed()) {
-                        $existingSource->restore();
-                    }
+                    $this->restoreForRecapture($existingSource);
 
                     $existingSource->update([
                         'lead_name' => $data['lead_name'],
@@ -69,12 +68,10 @@ class AffiliateLeadCaptureService
 
             if ($referral) {
                 if ((int) $referral->partner_id !== (int) $partner->id) {
-                    return $referral;
+                    throw new ReferralPartnerConflictException();
                 }
 
-                if ($referral->trashed()) {
-                    $referral->restore();
-                }
+                $this->restoreForRecapture($referral);
 
                 $updates = ['lead_identity_hash' => $identityHash];
 
@@ -132,5 +129,12 @@ class AffiliateLeadCaptureService
                 'notes' => $data['notes'] ?? null,
             ]);
         }, 3);
+    }
+
+    private function restoreForRecapture(Referral $referral): void
+    {
+        if ($referral->trashed()) {
+            $referral->restore();
+        }
     }
 }

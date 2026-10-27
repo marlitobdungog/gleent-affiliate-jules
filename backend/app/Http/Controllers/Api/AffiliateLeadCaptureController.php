@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Exceptions\ReferralPartnerConflictException;
 use App\Services\AffiliateClickHandoffService;
 use App\Services\AffiliateLeadCaptureService;
 use Illuminate\Http\JsonResponse;
@@ -52,7 +53,13 @@ class AffiliateLeadCaptureController extends Controller
             'notes' => ['nullable', 'string', 'max:10000'],
         ]);
 
-        $referral = $service->capture($validated);
+        try {
+            $referral = $service->capture($validated);
+        } catch (ReferralPartnerConflictException $exception) {
+            return response()->json(['message' => $exception->getMessage()], 409)
+                ->header('Cache-Control', 'no-store');
+        }
+
         if (! $referral) {
             return response()->json(['message' => 'Invalid or expired attribution.'], 422)
                 ->header('Cache-Control', 'no-store');
@@ -63,6 +70,7 @@ class AffiliateLeadCaptureController extends Controller
             'status' => $referral->status,
             'source' => $referral->source,
             'signup_status' => $referral->signup_status,
+            'crm_lead_id' => $referral->crm_lead_id ? (int) $referral->crm_lead_id : null,
         ])->header('Cache-Control', 'no-store');
     }
 }

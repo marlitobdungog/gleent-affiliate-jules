@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Exceptions\ReferralPartnerConflictException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\PartnerStoreReferralRequest;
 use App\Http\Requests\PartnerUpdateProfileRequest;
@@ -13,6 +14,7 @@ use App\Services\AffiliateClickAnalyticsService;
 use App\Services\AffiliateClickHandoffService;
 use App\Services\AffiliateLinkService;
 use App\Services\PartnerPortalService;
+use App\Services\ReferralRegistrationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -96,7 +98,10 @@ class PartnerPortalController extends Controller
             ->header('Cache-Control', 'private, no-store');
     }
 
-    public function storeReferral(PartnerStoreReferralRequest $request): JsonResponse
+    public function storeReferral(
+        PartnerStoreReferralRequest $request,
+        ReferralRegistrationService $service
+    ): JsonResponse
     {
         /** @var Partner $partner */
         $partner = $request->attributes->get('partner');
@@ -112,16 +117,22 @@ class PartnerPortalController extends Controller
             return response()->json(['message' => 'Product is not available to this partner.'], 404);
         }
 
-        $referral = Referral::create([
-            'partner_id' => $partner->id,
-            'product_id' => $request->validated('product_id'),
-            'lead_name' => $request->validated('lead_name'),
-            'lead_email' => $request->validated('lead_email'),
-            'company_name' => $request->validated('company_name'),
-            'notes' => $request->validated('notes'),
-            'source' => 'manual_submission',
-            'status' => 'new',
-        ]);
+        try {
+            $result = $service->register([
+                'partner_id' => $partner->id,
+                'product_id' => $request->validated('product_id'),
+                'lead_name' => $request->validated('lead_name'),
+                'lead_email' => $request->validated('lead_email'),
+                'company_name' => $request->validated('company_name'),
+                'notes' => $request->validated('notes'),
+                'source' => 'manual_submission',
+                'status' => 'new',
+            ]);
+        } catch (ReferralPartnerConflictException $exception) {
+            return response()->json(['message' => $exception->getMessage()], 409);
+        }
+
+        $referral = $result['referral'];
 
         $referral->load('product');
 
@@ -131,10 +142,10 @@ class PartnerPortalController extends Controller
             'company' => $referral->company_name,
             'email' => $referral->lead_email,
             'product' => $referral->product?->name,
-            'status' => 'New',
+            'status' => str($referral->status)->headline(),
             'status_raw' => $referral->status,
             'submitted_at' => $referral->created_at?->toDateString(),
-        ], 201);
+        ], $result['created'] ? 201 : 200);
     }
 
     public function leadStages(Request $request, PartnerPortalService $service): JsonResponse
