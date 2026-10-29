@@ -205,6 +205,7 @@ class AffiliateSsoController extends Controller
             'state' => $state,
             'code_challenge' => $challenge,
             'code_challenge_method' => 'S256',
+            ...($clientType === 'onboarding' ? ['prompt' => 'select_account'] : []),
         ], '', '&', PHP_QUERY_RFC3986);
 
         return redirect()->away($baseUrl.'/v1/oauth/authorize?'.$query);

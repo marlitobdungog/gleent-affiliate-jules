@@ -35,6 +35,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         const currentUser = await authApi.me()
         setUser(currentUser)
+        localStorage.setItem("auth_user", JSON.stringify(currentUser))
       } catch (err) {
         console.error("Not authenticated")
         setUser(null)

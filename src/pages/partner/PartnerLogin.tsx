@@ -43,7 +43,7 @@ export function PartnerLogin() {
           <CardHeader>
             <CardTitle className="text-xl">Sign in to Affiliate</CardTitle>
             <CardDescription>
-              Use your Gleent Account to access referrals, commissions, and payouts.
+              Choose the Gleent Account you want to use for referrals, commissions, and payouts.
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4">

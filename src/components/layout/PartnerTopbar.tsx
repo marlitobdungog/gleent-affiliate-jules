@@ -36,6 +36,16 @@ export function PartnerTopbar() {
     navigate("/partner/login")
   }
 
+  const handleSwitchAccount = async () => {
+    try {
+      await authApi.logout()
+    } catch {
+      // Continue to the Account chooser if the local session is already gone
+    }
+    logout()
+    window.location.assign("/api/sso/start/login")
+  }
+
   return (
     <header className="flex h-16 shrink-0 items-center gap-3 border-b border-border bg-background px-4">
       <SidebarTrigger className="-ml-1" />
@@ -67,6 +77,9 @@ export function PartnerTopbar() {
           <DropdownMenuContent align="end" className="w-48">
             <DropdownMenuItem onClick={() => navigate("/partner/profile")}>
               Profile
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleSwitchAccount}>
+              Switch Gleent Account
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem className="text-destructive" onClick={handleLogout}>

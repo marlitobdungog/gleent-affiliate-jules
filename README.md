@@ -103,4 +103,6 @@ Put the generated client IDs/secrets and the auth-service internal API key in th
 
 For local OAuth, auth-service and Account must already have the Gleent Account SSO issuer, audience, authorization URL, and matching RS256 keys configured. After the variables are set, rebuild/restart the Affiliate backend so Laravel reloads its configuration, then visit `/partner/register` to sign in and apply. Approval grants the `affiliate` app-access record; suspending, deactivating, or deleting the partner revokes it.
 
+Affiliate sign-in opens the Gleent Account chooser. Partners can switch accounts from the profile menu; this replaces only the Affiliate session, while sessions in other apps remain active.
+
 For production sign-in failures, see [Partner SSO troubleshooting](docs/troubleshooting/partner-sso-troubleshooting.md).
